@@ -29,6 +29,18 @@ const userSchema = new mongoose.Schema({
     type: String,
     unique: true,
     sparse: true
+  },
+  birthYear: {
+    type: Number,
+    required: true,
+    min: 1900,
+    max: new Date().getFullYear(),
+    validate: {
+      validator: function(value) {
+        return value >= 1900 && value <= new Date().getFullYear();
+      },
+      message: '올바른 태어난 년도를 입력해주세요 (1900-현재년도)'
+    }
   }
 }, {
   timestamps: true
@@ -44,6 +56,23 @@ userSchema.pre('save', async function(next) {
 // 비밀번호 확인 메서드
 userSchema.methods.checkPassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+// 나이 계산 메서드
+userSchema.methods.getAge = function() {
+  const currentYear = new Date().getFullYear();
+  return currentYear - this.birthYear;
+};
+
+// 나이대 계산 메서드 (10대, 20대 등)
+userSchema.methods.getAgeGroup = function() {
+  const age = this.getAge();
+  if (age < 20) return '10대';
+  if (age < 30) return '20대';
+  if (age < 40) return '30대';
+  if (age < 50) return '40대';
+  if (age < 60) return '50대';
+  return '60대+';
 };
 
 module.exports = mongoose.model('User', userSchema);

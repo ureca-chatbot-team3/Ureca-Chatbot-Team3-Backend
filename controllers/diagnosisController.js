@@ -77,8 +77,14 @@ const processDiagnosisResult = async (req, res) => {
       });
     }
     
-    // 6. 서비스 레이어에서 분석 및 추천 처리
-    const analysis = DiagnosisService.analyzeAnswers(answers, questions);
+    // 6. 사용자 정보 추가 (로그인된 경우)
+    let userAge = null;
+    if (req.user && req.user.birthYear) {
+      userAge = req.user.getAge();
+    }
+    
+    // 7. 서비스 레이어에서 분석 및 추천 처리
+    const analysis = DiagnosisService.analyzeAnswers(answers, questions, userAge);
     const recommendations = await DiagnosisService.recommendPlans(analysis);
     
     // 7. 추천 결과가 없는 경우 처리

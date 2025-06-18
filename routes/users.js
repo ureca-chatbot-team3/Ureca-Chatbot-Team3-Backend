@@ -18,7 +18,11 @@ const validateUpdate = [
   body('password')
     .optional()
     .isLength({ min: 10 })
-    .withMessage('비밀번호는 최소 10자 이상이어야 합니다.')
+    .withMessage('비밀번호는 최소 10자 이상이어야 합니다.'),
+  body('birthYear')
+    .optional()
+    .isInt({ min: 1900, max: new Date().getFullYear() })
+    .withMessage(`태어난 년도는 1900년부터 ${new Date().getFullYear()}년 사이여야 합니다.`)
 ];
 
 // 라우트 정의

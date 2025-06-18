@@ -24,7 +24,10 @@ const validateRegister = [
     .withMessage('올바른 이메일 형식이 아닙니다.'),
   body('password')
     .isLength({ min: 10 })
-    .withMessage('비밀번호는 최소 10자 이상이어야 합니다.')
+    .withMessage('비밀번호는 최소 10자 이상이어야 합니다.'),
+  body('birthYear')
+    .isInt({ min: 1900, max: new Date().getFullYear() })
+    .withMessage(`태어난 년도는 1900년부터 ${new Date().getFullYear()}년 사이여야 합니다.`)
 ];
 
 const validateLogin = [

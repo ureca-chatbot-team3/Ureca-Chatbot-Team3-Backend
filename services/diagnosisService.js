@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 class DiagnosisService {
   
   // 답변 분석을 별도 서비스로 분리
-  static analyzeAnswers(answers, questions) {
+  static analyzeAnswers(answers, questions, userAge = null) {
     const analysis = {
       dataUsage: 0,
       budget: 0,
@@ -15,6 +15,11 @@ class DiagnosisService {
       preferences: [],
       usagePatterns: []
     };
+
+    // 사용자 나이 우선 사용
+    if (userAge) {
+      analysis.age = userAge;
+    }
 
     // 답변 검증 및 분석
     answers.forEach(answer => {

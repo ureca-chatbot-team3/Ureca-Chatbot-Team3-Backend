@@ -15,6 +15,9 @@ const getUserProfile = async (req, res) => {
     const userData = {
       nickname: user.nickname,
       email: user.email,
+      birthYear: user.birthYear,
+      age: user.getAge(),
+      ageGroup: user.getAgeGroup(),
       createdAt: user.createdAt
     };
 
@@ -28,7 +31,7 @@ const getUserProfile = async (req, res) => {
 // 사용자 정보 수정 (camelCase 적용)
 const updateUserInfo = async (req, res) => {
   try {
-    const { nickname, password } = req.body;
+    const { nickname, password, birthYear } = req.body;
     const updateData = {};
 
     if (nickname) {
@@ -48,6 +51,15 @@ const updateUserInfo = async (req, res) => {
       updateData.password = await bcrypt.hash(password, 12);
     }
 
+    if (birthYear) {
+      // 생년월일 유효성 검사
+      const currentYear = new Date().getFullYear();
+      if (birthYear < 1900 || birthYear > currentYear) {
+        return ResponseHandler.sendValidationError(res, `태어난 년도는 1900년부터 ${currentYear}년 사이여야 합니다.`);
+      }
+      updateData.birthYear = birthYear;
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
       updateData,
@@ -56,7 +68,10 @@ const updateUserInfo = async (req, res) => {
 
     const userData = {
       nickname: updatedUser.nickname,
-      email: updatedUser.email
+      email: updatedUser.email,
+      birthYear: updatedUser.birthYear,
+      age: updatedUser.getAge(),
+      ageGroup: updatedUser.getAgeGroup()
     };
 
     return ResponseHandler.sendSuccess(res, userData, '사용자 정보가 수정되었습니다.');

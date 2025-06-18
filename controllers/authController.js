@@ -41,9 +41,9 @@ const login = async (req, res) => {
 // 회원가입
 const register = async (req, res) => {
   try {
-    const { nickname, email, password } = req.body;
+    const { nickname, email, password, birthYear } = req.body;
 
-    if (!nickname || !email || !password) {
+    if (!nickname || !email || !password || !birthYear) {
       return res.status(400).json({
         success: false,
         message: '모든 필드를 입력해주세요.'
@@ -62,14 +62,17 @@ const register = async (req, res) => {
       });
     }
 
-    const user = new User({ nickname, email, password });
+    const user = new User({ nickname, email, password, birthYear });
     await user.save();
 
     res.status(201).json({
       success: true,
       data: {
         nickname: user.nickname,
-        email: user.email
+        email: user.email,
+        birthYear: user.birthYear,
+        age: user.getAge(),
+        ageGroup: user.getAgeGroup()
       }
     });
   } catch (error) {
@@ -109,11 +112,13 @@ const kakaoCallback = async (req, res) => {
         await existingUser.save();
         user = existingUser;
       } else {
-        // 새 사용자 생성
+        // 새 사용자 생성 (카카오는 생년월일 대체값 사용)
+        const defaultBirthYear = new Date().getFullYear() - 25; // 기본 25세로 설정
         user = new User({
           kakaoId: kakaoUser.kakaoId,
           email: kakaoUser.email,
-          nickname: kakaoUser.nickname
+          nickname: kakaoUser.nickname,
+          birthYear: defaultBirthYear
         });
         await user.save();
       }
@@ -141,7 +146,10 @@ const getProfile = async (req, res) => {
       success: true,
       data: {
         nickname: req.user.nickname,
-        email: req.user.email
+        email: req.user.email,
+        birthYear: req.user.birthYear,
+        age: req.user.getAge(),
+        ageGroup: req.user.getAgeGroup()
       }
     });
   } catch (error) {
