@@ -53,6 +53,22 @@ const planSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  // 새로 추가된 이미지 관련 필드들
+  imagePath: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  icon: {
+    type: String,
+    default: null,
+    trim: true
+  },
+  iconPath: {
+    type: String,
+    default: null,
+    trim: true
   }
 }, {
   timestamps: true
