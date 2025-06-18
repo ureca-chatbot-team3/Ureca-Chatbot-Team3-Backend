@@ -13,21 +13,21 @@ const diagnosisQuestionSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['single', 'multiple', 'range']
+    enum: ['single', 'multiple', 'range', 'input']
   },
   options: [{
     type: String
   }],
-  weight: {
-    type: Number,
-    default: 1,
-    min: 0,
-    max: 10
-  },
   category: {
     type: String,
     required: true,
-    enum: ['data', 'call', 'price', 'general']
+    enum: ['data', 'budget', 'usage', 'age', 'preference']
+  },
+  weight: {
+    type: Number,
+    default: 1,
+    min: 1,
+    max: 10
   },
   isActive: {
     type: Boolean,
@@ -36,5 +36,10 @@ const diagnosisQuestionSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// 인덱스 설정 (unique 제약이 있는 필드는 인덱스 중복 방지)
+// diagnosisQuestionSchema.index({ order: 1 }); // order는 unique: true로 이미 인덱스 생성됨
+diagnosisQuestionSchema.index({ category: 1 });
+diagnosisQuestionSchema.index({ isActive: 1 });
 
 module.exports = mongoose.model('DiagnosisQuestion', diagnosisQuestionSchema);

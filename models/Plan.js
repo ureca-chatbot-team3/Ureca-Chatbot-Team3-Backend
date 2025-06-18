@@ -6,44 +6,49 @@ const planSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  badge: {
+    type: mongoose.Schema.Types.Mixed, // String 또는 Array
+    default: null
+  },
+  infos: [{
+    type: String
+  }],
+  plan_speed: {
+    type: String,
+    default: null
+  },
   price: {
+    type: String,
+    required: true
+  },
+  price_value: {
     type: Number,
     required: true,
     min: 0
   },
-  data: {
+  sale_price: {
     type: String,
     required: true
   },
-  call: {
-    type: String,
-    required: true
-  },
-  sms: {
-    type: String,
-    required: true
-  },
-  description: {
-    type: String,
-    required: true
-  },
-  features: [{
+  brands: [{
     type: String
   }],
-  tags: [{
-    type: String
-  }],
-  targetAge: {
-    type: String,
-    enum: ['10대', '20대', '30대', '40대', '50대+', '전체']
+  benefits: {
+    type: mongoose.Schema.Types.Mixed, // Object 형태
+    default: {}
   },
-  benefits: [{
-    type: String
-  }],
+  max_age: {
+    type: Number,
+    default: null
+  },
+  min_age: {
+    type: Number,
+    default: null
+  },
   category: {
     type: String,
     required: true,
-    enum: ['5G', 'LTE']
+    enum: ['5G', 'LTE', '기타']
   },
   isActive: {
     type: Boolean,
@@ -54,7 +59,9 @@ const planSchema = new mongoose.Schema({
 });
 
 // 인덱스 설정
-planSchema.index({ name: 'text', description: 'text' });
-planSchema.index({ category: 1, price: 1 });
+planSchema.index({ name: 'text' });
+planSchema.index({ category: 1, price_value: 1 });
+planSchema.index({ max_age: 1, min_age: 1 });
+planSchema.index({ badge: 1 });
 
 module.exports = mongoose.model('Plan', planSchema);

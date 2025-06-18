@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
 const { getKakaoToken, getKakaoUserInfo } = require('../utils/kakao');
+const ResponseHandler = require('../utils/responseHandler');
 
 // 일반 로그인
 const login = async (req, res) => {
@@ -8,18 +9,12 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: '이메일과 비밀번호를 입력해주세요.'
-      });
+      return ResponseHandler.sendValidationError(res, '이메일과 비밀번호를 입력해주세요.');
     }
 
     const user = await User.findOne({ email });
     if (!user || !await user.checkPassword(password)) {
-      return res.status(401).json({
-        success: false,
-        message: '이메일 또는 비밀번호가 올바르지 않습니다.'
-      });
+      return ResponseHandler.sendUnauthorized(res, '이메일 또는 비밀번호가 올바르지 않습니다.');
     }
 
     const token = generateToken(user._id);
@@ -31,18 +26,15 @@ const login = async (req, res) => {
       maxAge: 1000 * 60 * 60, // 1시간
     });
 
-    res.json({
-      success: true,
-      data: {
-        nickname: user.nickname,
-        email: user.email
-      }
-    });
+    const userData = {
+      nickname: user.nickname,
+      email: user.email
+    };
+
+    return ResponseHandler.sendSuccess(res, userData, '로그인이 성공적으로 완료되었습니다.');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '로그인 처리 중 오류가 발생했습니다.'
-    });
+    console.error('로그인 처리 오류:', error);
+    return ResponseHandler.sendError(res, '로그인 처리 중 오류가 발생했습니다.');
   }
 };
 

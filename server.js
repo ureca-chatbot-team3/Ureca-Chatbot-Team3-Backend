@@ -25,7 +25,9 @@ const limiter = rateLimit({
   message: {
     success: false,
     message: '너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.'
-  }
+  },
+  standardHeaders: true,
+  legacyHeaders: false
 });
 app.use(limiter);
 
@@ -38,7 +40,7 @@ app.use(cors({
 // 미들웨어
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser(process.env.COOKIE_SECRET));
+app.use(cookieParser());
 
 // 검증 에러 처리 미들웨어 추가
 app.use(handleValidationErrors);
@@ -55,8 +57,7 @@ app.use('/api/plans', planRoutes);
 app.use('/api/diagnosis', diagnosisRoutes);
 app.use('/api/bookmarks', bookmarkRoutes);
 
-// 사용자별 보관함 조회 라우트 (별도 처리)
-app.get('/api/users/:nickname/bookmarks', require('./middleware/auth').authenticateToken, require('./controllers/bookmarkController').getBookmarks);
+
 
 // 헬스체크 엔드포인트
 app.get('/api/health', (req, res) => {

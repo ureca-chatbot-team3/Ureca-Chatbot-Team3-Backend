@@ -1,148 +1,340 @@
 const DiagnosisQuestion = require('../models/DiagnosisQuestion');
 const DiagnosisResult = require('../models/DiagnosisResult');
-const Plan = require('../models/Plan');
+const DiagnosisService = require('../services/diagnosisService');
+const Validators = require('../utils/validators');
 const { v4: uuidv4 } = require('uuid');
 
 // 진단 질문 조회
-const getQuestions = async (req, res) => {
+const getDiagnosisQuestions = async (req, res) => {
   try {
     const questions = await DiagnosisQuestion.find({ isActive: true })
       .sort({ order: 1 })
-      .select('-isActive -createdAt -updatedAt');
+      .select('-createdAt -updatedAt -__v')
+      .lean(); // 성능 향상을 위한 lean() 사용
 
     res.json({
       success: true,
-      data: { questions }
+      data: questions
     });
   } catch (error) {
+    console.error('진단 질문 조회 오류:', error);
     res.status(500).json({
       success: false,
-      message: '진단 질문 조회 중 오류가 발생했습니다.'
+      message: '진단 질문을 불러오는 중 오류가 발생했습니다.'
     });
   }
 };
 
-// 진단 결과 처리 및 요금제 추천
-const processResult = async (req, res) => {
+// 진단 결과 처리 (개선된 버전)
+const processDiagnosisResult = async (req, res) => {
   try {
-    const { answers, sessionId } = req.body;
+    const { answers, sessionId: providedSessionId } = req.body;
     
-    if (!answers || !Array.isArray(answers)) {
+    // 1. 입력값 검증
+    try {
+      Validators.validateDiagnosisAnswers(answers);
+      
+      if (providedSessionId && !Validators.isValidSessionId(providedSessionId)) {
+        return res.status(400).json({
+          success: false,
+          message: '유효하지 않은 세션 ID입니다.'
+        });
+      }
+    } catch (validationError) {
       return res.status(400).json({
         success: false,
-        message: '답변 데이터가 올바르지 않습니다.'
+        message: validationError.message
       });
     }
-
-    // 답변 기반 점수 계산
-    const score = await calculateScore(answers);
     
-    // 추천 요금제 선정
-    const recommendedPlans = await getRecommendedPlans(score);
-
-    // 진단 결과 저장
-    const result = new DiagnosisResult({
-      userId: req.user ? req.user._id : null,
-      sessionId: sessionId || uuidv4(),
+    // 2. 세션 ID 생성 또는 사용
+    const sessionId = providedSessionId || uuidv4();
+    
+    // 3. 질문 데이터 조회 (답변 검증용)
+    const questions = await DiagnosisQuestion.find({ isActive: true }).lean();
+    
+    // 4. 답변된 질문이 실제로 존재하는지 검증
+    const validQuestionIds = questions.map(q => q._id.toString());
+    const invalidAnswers = answers.filter(answer => 
+      !validQuestionIds.includes(answer.questionId)
+    );
+    
+    if (invalidAnswers.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: '존재하지 않는 질문에 대한 답변이 포함되어 있습니다.',
+        invalidQuestionIds: invalidAnswers.map(a => a.questionId)
+      });
+    }
+    
+    // 5. 중복 세션 ID 체크
+    const existingResult = await DiagnosisResult.findOne({ sessionId });
+    if (existingResult) {
+      return res.status(409).json({
+        success: false,
+        message: '이미 처리된 세션입니다. 새로운 세션 ID를 사용해주세요.',
+        existingSessionId: sessionId
+      });
+    }
+    
+    // 6. 서비스 레이어에서 분석 및 추천 처리
+    const analysis = DiagnosisService.analyzeAnswers(answers, questions);
+    const recommendations = await DiagnosisService.recommendPlans(analysis);
+    
+    // 7. 추천 결과가 없는 경우 처리
+    if (recommendations.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          sessionId,
+          analysisResult: analysis,
+          recommendedPlans: [],
+          totalScore: 0,
+          message: '답변에 맞는 추천 요금제를 찾을 수 없습니다. 조건을 다시 검토해보세요.'
+        }
+      });
+    }
+    
+    // 8. 결과 저장
+    const savedResult = await DiagnosisService.saveDiagnosisResult(
+      sessionId,
+      req.user ? req.user._id : null,
       answers,
-      recommendedPlans: recommendedPlans.map(plan => plan._id),
-      score
+      analysis,
+      recommendations
+    );
+    
+    // 9. 응답 데이터 구성
+    const responseData = {
+      _id: savedResult._id,
+      sessionId: savedResult.sessionId,
+      analysisResult: analysis,
+      recommendedPlans: recommendations.map(rec => ({
+        plan: rec.plan,
+        matchScore: rec.matchScore,
+        reasons: rec.reasons
+      })),
+      totalScore: savedResult.totalScore,
+      createdAt: savedResult.createdAt
+    };
+    
+    res.json({
+      success: true,
+      data: responseData
     });
+    
+  } catch (error) {
+    console.error('진단 결과 처리 오류:', error);
+    
+    // 상세한 에러 타입별 처리
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: '데이터 검증에 실패했습니다.',
+        details: Object.values(error.errors).map(e => e.message)
+      });
+    }
+    
+    if (error.name === 'MongoServerError' && error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: '중복된 세션 ID입니다.'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: '진단 결과 처리 중 오류가 발생했습니다.',
+      errorCode: 'DIAGNOSIS_PROCESSING_ERROR'
+    });
+  }
+};
 
-    await result.save();
+// 진단 결과 조회 (개선된 버전)
+const getDiagnosisResult = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    
+    // 세션 ID 검증
+    if (!Validators.isValidSessionId(sessionId)) {
+      return res.status(400).json({
+        success: false,
+        message: '유효하지 않은 세션 ID입니다.'
+      });
+    }
+    
+    const result = await DiagnosisResult.findOne({ sessionId })
+      .populate({
+        path: 'recommendedPlans.planId',
+        select: 'name price price_value category infos benefits badge brands',
+        match: { isActive: true }
+      })
+      .select('-__v')
+      .lean();
+    
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: '해당 세션의 진단 결과를 찾을 수 없습니다.'
+      });
+    }
+    
+    // 비활성화된 요금제 필터링
+    result.recommendedPlans = result.recommendedPlans.filter(
+      plan => plan.planId !== null
+    );
+    
+    res.json({
+      success: true,
+      data: result
+    });
+    
+  } catch (error) {
+    console.error('진단 결과 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '진단 결과 조회 중 오류가 발생했습니다.'
+    });
+  }
+};
 
+// 사용자별 진단 기록 조회 (새로운 기능)
+const getUserDiagnosisHistory = async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: '로그인이 필요합니다.'
+      });
+    }
+    
+    const { page = 1, limit = 10 } = req.query;
+    const { pageNum, limitNum } = Validators.validatePagination(page, limit);
+    const skip = (pageNum - 1) * limitNum;
+    
+    const results = await DiagnosisResult.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .select('sessionId totalScore createdAt analysisResult')
+      .lean();
+    
+    const totalCount = await DiagnosisResult.countDocuments({ userId: req.user._id });
+    const totalPages = Math.ceil(totalCount / limitNum);
+    
     res.json({
       success: true,
       data: {
-        recommendedPlans,
-        score,
-        sessionId: result.sessionId
+        history: results,
+        pagination: {
+          totalPages,
+          currentPage: pageNum,
+          totalCount,
+          hasNext: pageNum < totalPages,
+          hasPrev: pageNum > 1
+        }
       }
     });
+    
   } catch (error) {
+    console.error('진단 기록 조회 오류:', error);
     res.status(500).json({
       success: false,
-      message: '진단 결과 처리 중 오류가 발생했습니다.'
+      message: '진단 기록 조회 중 오류가 발생했습니다.'
     });
   }
 };
 
-// 점수 계산 함수
-const calculateScore = async (answers) => {
-  const score = { data: 0, call: 0, price: 0 };
-  
-  for (const answer of answers) {
-    const question = await DiagnosisQuestion.findById(answer.questionId);
-    if (!question) continue;
-
-    const weight = question.weight || 1;
-    const answerValue = parseAnswerValue(answer.answer, question.type);
-    
-    // 카테고리별 점수 누적
-    score[question.category] += answerValue * weight;
-  }
-  
-  return score;
-};
-
-// 답변 값 파싱
-const parseAnswerValue = (answer, type) => {
-  switch (type) {
-    case 'range':
-      return parseInt(answer) || 0;
-    case 'single':
-    case 'multiple':
-      // 답변에 따른 점수 매핑 (예시)
-      const scoreMap = {
-        '매우 적음': 1,
-        '적음': 2,
-        '보통': 3,
-        '많음': 4,
-        '매우 많음': 5,
-        '가격 중요': 5,
-        '품질 중요': 3,
-        '브랜드 중요': 2
-      };
-      return scoreMap[answer] || 3;
-    default:
-      return 3;
-  }
-};
-
-// 추천 요금제 선정
-const getRecommendedPlans = async (score) => {
+// 진단 통계 조회 (관리자용)
+const getDiagnosisStats = async (req, res) => {
   try {
-    // 점수 기반 필터링 조건 생성
-    const query = { isActive: true };
+    // 기본 통계
+    const totalDiagnosis = await DiagnosisResult.countDocuments();
+    const todayDiagnosis = await DiagnosisResult.countDocuments({
+      createdAt: {
+        $gte: new Date(new Date().setHours(0, 0, 0, 0))
+      }
+    });
     
-    // 데이터 사용량에 따른 필터링
-    if (score.data >= 15) {
-      query.data = { $regex: '무제한', $options: 'i' };
-    } else if (score.data >= 10) {
-      query.$or = [
-        { data: { $regex: '무제한', $options: 'i' } },
-        { data: { $regex: '50GB|100GB', $options: 'i' } }
-      ];
-    }
+    // 연령대별 통계
+    const ageStats = await DiagnosisResult.aggregate([
+      {
+        $match: {
+          'analysisResult.age': { $exists: true, $ne: null }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $switch: {
+              branches: [
+                { case: { $lt: ['$analysisResult.age', 20] }, then: '10대' },
+                { case: { $lt: ['$analysisResult.age', 30] }, then: '20대' },
+                { case: { $lt: ['$analysisResult.age', 40] }, then: '30대' },
+                { case: { $lt: ['$analysisResult.age', 50] }, then: '40대' },
+                { case: { $lt: ['$analysisResult.age', 60] }, then: '50대' }
+              ],
+              default: '60대+'
+            }
+          },
+          count: { $sum: 1 },
+          avgScore: { $avg: '$totalScore' }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
     
-    // 가격 민감도에 따른 정렬
-    const sortOrder = score.price >= 15 ? { features: -1, price: 1 } : { price: 1 };
+    // 예산대별 통계
+    const budgetStats = await DiagnosisResult.aggregate([
+      {
+        $match: {
+          'analysisResult.budget': { $exists: true, $gt: 0 }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $switch: {
+              branches: [
+                { case: { $lt: ['$analysisResult.budget', 30000] }, then: '3만원 미만' },
+                { case: { $lt: ['$analysisResult.budget', 50000] }, then: '3-5만원' },
+                { case: { $lt: ['$analysisResult.budget', 70000] }, then: '5-7만원' },
+                { case: { $lt: ['$analysisResult.budget', 100000] }, then: '7-10만원' }
+              ],
+              default: '10만원 이상'
+            }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
     
-    const plans = await Plan.find(query)
-      .sort(sortOrder)
-      .limit(5);
-
-    return plans;
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          totalDiagnosis,
+          todayDiagnosis
+        },
+        ageDistribution: ageStats,
+        budgetDistribution: budgetStats
+      }
+    });
+    
   } catch (error) {
-    console.error('추천 요금제 선정 오류:', error);
-    // 기본 추천: 가격순 정렬된 상위 5개
-    return await Plan.find({ isActive: true })
-      .sort({ price: 1 })
-      .limit(5);
+    console.error('진단 통계 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '통계 조회 중 오류가 발생했습니다.'
+    });
   }
 };
 
 module.exports = {
-  getQuestions,
-  processResult
+  getDiagnosisQuestions,
+  processDiagnosisResult,
+  getDiagnosisResult,
+  getUserDiagnosisHistory,
+  getDiagnosisStats
 };

@@ -2,8 +2,9 @@ const express = require('express');
 const { body } = require('express-validator');
 const {
   getUserProfile,
-  updateUser
+  updateUserInfo  // camelCase로 변경된 함수명
 } = require('../controllers/userController');
+const { getBookmarks } = require('../controllers/bookmarkController');
 const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
 
@@ -16,12 +17,13 @@ const validateUpdate = [
     .withMessage('닉네임은 2-20자 사이여야 합니다.'),
   body('password')
     .optional()
-    .isLength({ min: 6 })
-    .withMessage('비밀번호는 최소 6자 이상이어야 합니다.')
+    .isLength({ min: 10 })
+    .withMessage('비밀번호는 최소 10자 이상이어야 합니다.')
 ];
 
 // 라우트 정의
 router.get('/:nickname', getUserProfile);
-router.put('/update', authenticateToken, validateUpdate, updateUser);
+router.get('/:nickname/bookmarks', authenticateToken, getBookmarks);
+router.put('/update', authenticateToken, validateUpdate, updateUserInfo);
 
 module.exports = router;
