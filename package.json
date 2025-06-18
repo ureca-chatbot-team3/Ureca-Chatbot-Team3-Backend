@@ -19,6 +19,7 @@
     "health": "node scripts/checkHealth.js",
     "setup": "npm run clear && npm run seed && npm run seed:questions",
     "clean": "npm run clear && npm run seed && npm run seed:questions",
+    "update:images": "node scripts/updatePlansWithImages.js",
     "test": "jest"
   },
   "dependencies": {

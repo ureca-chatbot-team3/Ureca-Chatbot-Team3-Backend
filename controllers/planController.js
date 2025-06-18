@@ -61,23 +61,33 @@ const getPlans = async (req, res) => {
     const sortOptions = {};
     sortOptions[validSortBy] = validSortOrder === 'desc' ? -1 : 1;
 
+    // 이미지 정보를 포함한 필드 선택
+    const selectFields = '-__v';
+
     // 성능 최적화된 쿼리 실행
     const [plans, totalCount] = await Promise.all([
       Plan.find(query)
         .sort(sortOptions)
         .skip(skip)
         .limit(limitNum)
-        .select('-__v') // 불필요한 필드 제외
+        .select(selectFields)
         .lean(), // 성능 향상
       Plan.countDocuments(query)
     ]);
+
+    // 이미지 경로 처리 (프론트엔드에서 사용할 수 있도록 절대 경로로 변환)
+    const processedPlans = plans.map(plan => ({
+      ...plan,
+      imagePath: plan.imagePath ? plan.imagePath : null,
+      iconPath: plan.iconPath ? plan.iconPath : null
+    }));
 
     const totalPages = Math.ceil(totalCount / limitNum);
 
     res.json({
       success: true,
       data: {
-        plans,
+        plans: processedPlans,
         pagination: {
           totalPages,
           currentPage: pageNum,
@@ -128,6 +138,13 @@ const getPlanDetail = async (req, res) => {
       });
     }
 
+    // 이미지 경로 처리
+    const processedPlan = {
+      ...plan,
+      imagePath: plan.imagePath ? plan.imagePath : null,
+      iconPath: plan.iconPath ? plan.iconPath : null
+    };
+
     // 유사한 요금제 추천 (성능 최적화)
     const priceRange = plan.price_value * 0.3;
     const similarPlansQuery = {
@@ -141,15 +158,22 @@ const getPlanDetail = async (req, res) => {
     };
 
     const similarPlans = await Plan.find(similarPlansQuery)
-      .select('name price price_value category badge')
+      .select('name price price_value category badge imagePath iconPath icon')
       .limit(3)
       .lean();
+
+    // 유사 요금제들도 이미지 경로 처리
+    const processedSimilarPlans = similarPlans.map(similarPlan => ({
+      ...similarPlan,
+      imagePath: similarPlan.imagePath ? similarPlan.imagePath : null,
+      iconPath: similarPlan.iconPath ? similarPlan.iconPath : null
+    }));
 
     res.json({
       success: true,
       data: {
-        plan,
-        similarPlans
+        plan: processedPlan,
+        similarPlans: processedSimilarPlans
       }
     });
   } catch (error) {
@@ -211,8 +235,9 @@ const getRecommendedPlans = async (req, res) => {
       query.price_value = { $lte: validBudget * 1.2 };
     }
 
+    // 이미지 정보도 포함하여 조회
     const plans = await Plan.find(query)
-      .select('name price price_value category infos benefits badge')
+      .select('name price price_value category infos benefits badge imagePath iconPath icon')
       .sort({ price_value: 1 })
       .lean();
 
@@ -258,7 +283,13 @@ const getRecommendedPlans = async (req, res) => {
         }
       }
 
-      return { ...plan, recommendScore: score };
+      // 이미지 경로 처리
+      return { 
+        ...plan, 
+        recommendScore: score,
+        imagePath: plan.imagePath ? plan.imagePath : null,
+        iconPath: plan.iconPath ? plan.iconPath : null
+      };
     });
 
     // 점수순 정렬
@@ -391,24 +422,31 @@ const comparePlans = async (req, res) => {
       });
     }
 
+    // 이미지 경로 처리
+    const processedPlans = plans.map(plan => ({
+      ...plan,
+      imagePath: plan.imagePath ? plan.imagePath : null,
+      iconPath: plan.iconPath ? plan.iconPath : null
+    }));
+
     // 비교 분석 (에러 방지)
     const comparison = {
-      plans: plans,
+      plans: processedPlans,
       analysis: {
-        cheapest: plans.reduce((min, plan) => 
+        cheapest: processedPlans.reduce((min, plan) => 
           plan.price_value < min.price_value ? plan : min),
-        mostExpensive: plans.reduce((max, plan) => 
+        mostExpensive: processedPlans.reduce((max, plan) => 
           plan.price_value > max.price_value ? plan : max),
-        mostData: plans.reduce((max, plan) => {
+        mostData: processedPlans.reduce((max, plan) => {
           const maxData = plan.infos.join(' ').toLowerCase().includes('무제한') ? Infinity : 
             parseInt(plan.infos.join(' ').match(/(\d+)gb/)?.[1] || 0);
           const currentMax = max.infos.join(' ').toLowerCase().includes('무제한') ? Infinity :
             parseInt(max.infos.join(' ').match(/(\d+)gb/)?.[1] || 0);
           return maxData > currentMax ? plan : max;
         }),
-        averagePrice: Math.round(plans.reduce((sum, plan) => sum + plan.price_value, 0) / plans.length),
-        categories: [...new Set(plans.map(plan => plan.category))],
-        hasUnlimited: plans.some(plan => plan.infos.join(' ').toLowerCase().includes('무제한'))
+        averagePrice: Math.round(processedPlans.reduce((sum, plan) => sum + plan.price_value, 0) / processedPlans.length),
+        categories: [...new Set(processedPlans.map(plan => plan.category))],
+        hasUnlimited: processedPlans.some(plan => plan.infos.join(' ').toLowerCase().includes('무제한'))
       }
     };
 

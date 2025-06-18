@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { handleValidationErrors } = require('./middleware/validation');
@@ -17,6 +18,10 @@ const chatRoute = require('./routes/chat');
 
 const app = express();
 
+// 정적 파일 서빙 설정
+app.use('/images', express.static(path.join(__dirname, 'public/images')));
+// 또는 전체 public 폴더를 서빙하는 경우
+app.use(express.static(path.join(__dirname, 'public')));
 // 보안 미들웨어
 app.use(helmet());
 
