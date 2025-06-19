@@ -463,10 +463,16 @@ const comparePlans = async (req, res) => {
   }
 };
 
+
+
+
+
 module.exports = {
   getPlans,
   getPlanDetail,
   getRecommendedPlans,
   getPlanStats,
-  comparePlans
+  comparePlans,
 };
+
+

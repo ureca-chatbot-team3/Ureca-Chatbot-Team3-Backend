@@ -5,7 +5,8 @@ const {
   getPlanDetail,
   getRecommendedPlans,
   getPlanStats,
-  comparePlans
+  comparePlans,
+  
 } = require('../controllers/planController');
 const router = express.Router();
 
@@ -71,5 +72,6 @@ router.get('/stats', getPlanStats);
 router.get('/recommend', validateRecommendQuery, getRecommendedPlans);
 router.get('/:planId', getPlanDetail);
 router.post('/compare', validateCompareRequest, comparePlans);
+
 
 module.exports = router;
