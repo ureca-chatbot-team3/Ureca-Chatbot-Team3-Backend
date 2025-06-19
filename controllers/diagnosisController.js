@@ -179,7 +179,7 @@ const getDiagnosisResult = async (req, res) => {
       .populate({
         path: "recommendedPlans.planId",
         select:
-          "name price price_value category infos benefits badge brands imagePath iconPath",
+          "name price sale_price price_value sale_price_value category infos benefits badge brands imagePath iconPath icon",
         match: { isActive: true },
       })
       .select("-__v")
@@ -192,22 +192,16 @@ const getDiagnosisResult = async (req, res) => {
       });
     }
 
-    // 이미지 URL을 완전한 경로로 변환
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
-
+    // 이미지 경로 처리 (상대 경로로 유지)
     result.recommendedPlans = result.recommendedPlans
       .filter((plan) => plan.planId !== null)
       .map((plan) => ({
         ...plan,
         planId: {
           ...plan.planId,
-          // 완전한 이미지 URL 생성
-          imagePath: plan.planId.imagePath
-            ? `${baseUrl}${plan.planId.imagePath}`
-            : null,
-          iconPath: plan.planId.iconPath
-            ? `${baseUrl}${plan.planId.iconPath}`
-            : null,
+          // 이미지 경로는 상대 경로로 유지 (프론트엔드에서 처리)
+          imagePath: plan.planId.imagePath || null,
+          iconPath: plan.planId.iconPath || null,
         },
       }));
 

@@ -103,7 +103,7 @@ class DiagnosisService {
       
       // lean()을 사용하여 성능 향상
       const plans = await Plan.find(query)
-        .select('name price_value infos benefits category badge min_age max_age brands')
+        .select('name price sale_price price_value sale_price_value infos benefits category badge min_age max_age brands imagePath iconPath icon')
         .lean();
 
       // 병렬 처리로 점수 계산

@@ -30,6 +30,11 @@ const planSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  sale_price_value: {
+    type: Number,
+    required: true,
+    min: 0
+  },
   brands: [{
     type: String
   }],

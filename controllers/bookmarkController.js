@@ -20,7 +20,7 @@ const getBookmarks = async (req, res) => {
       .populate({
         path: 'planId',
         match: { isActive: true },
-        select: 'name price price_value category infos benefits badge brands'
+        select: 'name price sale_price price_value sale_price_value category infos benefits badge brands'
       })
       .sort({ createdAt: -1 })
       .lean(); // 성능 최적화
