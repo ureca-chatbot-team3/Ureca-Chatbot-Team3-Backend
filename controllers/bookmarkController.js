@@ -6,21 +6,11 @@ const Validators = require('../utils/validators');
 // 보관함 조회 (camelCase 적용 및 개선)
 const getBookmarks = async (req, res) => {
   try {
-    const { nickname } = req.params;
-    
-    // 닉네임 검증
-    const validNickname = Validators.validateNickname(nickname);
-    
-    // 현재 사용자의 보관함만 조회 가능하도록 권한 체크
-    if (req.user.nickname !== validNickname) {
-      return ResponseHandler.sendForbidden(res, '접근 권한이 없습니다.');
-    }
-
     const bookmarks = await Bookmark.find({ userId: req.user._id })
       .populate({
         path: 'planId',
         match: { isActive: true },
-        select: 'name price sale_price price_value sale_price_value category infos benefits badge brands'
+        select: 'name price sale_price price_value sale_price_value category infos benefits badge brands imagePath'
       })
       .sort({ createdAt: -1 })
       .lean(); // 성능 최적화
@@ -127,8 +117,31 @@ const removeBookmark = async (req, res) => {
   }
 };
 
+// 보관함 상태 확인
+const checkBookmarkStatus = async (req, res) => {
+  try {
+    const { planId } = req.params;
+
+    const bookmark = await Bookmark.findOne({
+      userId: req.user._id,
+      planId
+    });
+
+    res.json({
+      success: true,
+      isBookmarked: !!bookmark
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '보관함 상태 확인 중 오류가 발생했습니다.'
+    });
+  }
+};
+
 module.exports = {
   getBookmarks,
   addBookmark,
-  removeBookmark
+  removeBookmark,
+  checkBookmarkStatus
 };

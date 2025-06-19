@@ -1,8 +1,10 @@
 const express = require('express');
 const { body, param } = require('express-validator');
 const {
+  getBookmarks,
   addBookmark,
-  removeBookmark
+  removeBookmark,
+  checkBookmarkStatus
 } = require('../controllers/bookmarkController');
 const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
@@ -21,8 +23,9 @@ const validatePlanId = [
 ];
 
 // 라우트 정의
-// 보관함 조회는 users 라우트에서 처리 (/api/users/:nickname/bookmarks)
+router.get('/', authenticateToken, getBookmarks);
 router.post('/', authenticateToken, validateBookmark, addBookmark);
 router.delete('/:planId', authenticateToken, validatePlanId, removeBookmark);
+router.get('/status/:planId', authenticateToken, validatePlanId, checkBookmarkStatus);
 
 module.exports = router;
