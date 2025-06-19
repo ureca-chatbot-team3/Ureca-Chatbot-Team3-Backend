@@ -15,6 +15,7 @@ const planRoutes = require('./routes/plans');
 const diagnosisRoutes = require('./routes/diagnosis');
 const bookmarkRoutes = require('./routes/bookmarks');
 const chatRoute = require('./routes/chat');
+const faqRoutes = require('./routes/faq');
 
 const app = express();
 
@@ -62,7 +63,7 @@ app.use('/api/plans', planRoutes);
 app.use('/api/diagnosis', diagnosisRoutes);
 app.use('/api/bookmarks', bookmarkRoutes);
 app.use('/api/chat', chatRoute);
-
+app.use('/api/faq', faqRoutes);
 
 // 헬스체크
 app.get('/api/health', (req, res) => {
