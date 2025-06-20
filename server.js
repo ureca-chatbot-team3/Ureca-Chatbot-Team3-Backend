@@ -8,6 +8,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const http = require('http');
 const { Server } = require('socket.io');
+const conversationRoutes = require('./routes/conversationRoutes');
 require('dotenv').config();
 
 // 🔐 커스텀 미들웨어
@@ -74,6 +75,7 @@ app.use('/api/plans', require('./routes/plans'));
 app.use('/api/diagnosis', require('./routes/diagnosis'));
 app.use('/api/bookmarks', require('./routes/bookmarks'));
 app.use('/api/faq', require('./routes/faq'));
+app.use('/api/conversations', conversationRoutes);
 // ❌ 기존 REST 기반 챗봇 라우트 제거됨 → Socket 사용
 // app.use('/api/chat', require('./routes/chat'));
 

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+// 개별 메시지 스키마
 const messageSchema = new mongoose.Schema({
   role: {
     type: String,
@@ -16,33 +17,30 @@ const messageSchema = new mongoose.Schema({
   },
 });
 
-const conversationSchema = new mongoose.Schema({
-  sessionId: {
-    type: String,
-    required: true,
-    unique: true,
-    index: true,
-  },
-  messages: [messageSchema],
-  metadata: {
-    ipAddress: String,
-    userAgent: String,
-    createdAt: {
-      type: Date,
-      default: Date.now,
+// 대화 스키마
+const conversationSchema = new mongoose.Schema(
+  {
+    sessionId: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    messages: [messageSchema],
+    metadata: {
+      ipAddress: String,
+      userAgent: String,
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
     },
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  {
+    timestamps: true,
+  }
+);
 
-// 인덱스 추가로 조회 성능 향상
+// 🔍 조회 성능 향상을 위한 인덱스
 conversationSchema.index({ updatedAt: -1 });
 conversationSchema.index({ createdAt: -1 });
 

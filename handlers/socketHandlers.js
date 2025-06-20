@@ -1,4 +1,3 @@
-// controllers/socketHandlers.js
 const OpenAI = require('openai');
 const Conversation = require('../models/Conversation');
 const { getClientIP, generateSessionId } = require('../utils/helpers');
@@ -9,11 +8,24 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// 캐시 변수
+let cachedPlanSummary = null;
+let lastCacheTime = 0;
+const CACHE_DURATION_MS = 15 * 60 * 1000; // 10분 캐시
+
 const generateSystemPrompt = async () => {
+  const now = Date.now();
+
+  if (cachedPlanSummary && now - lastCacheTime < CACHE_DURATION_MS) {
+    // 캐시된 데이터 사용
+    return cachedPlanSummary;
+  }
+
+  // 캐시 만료 또는 최초 호출 시 요금제 목록 다시 조회
   const summaries = await fetchPlansForChatbotSummary(50);
   const summaryText = summaries.join('\n');
 
-  return `
+  const prompt = `
 당신은 요플랜 통신요금제 안내 전문 챗봇 "요플밍" 입니다.
 
 사용자가 인사하거나 간단한 말을 걸어오면 친절하게 응답해주세요.
@@ -29,6 +41,12 @@ const generateSystemPrompt = async () => {
 아래는 요금제 목록입니다:
 ${summaryText}
 `.trim();
+
+  // 캐시 저장
+  cachedPlanSummary = prompt;
+  lastCacheTime = now;
+
+  return prompt;
 };
 
 function findMatchingFAQ(userQuestion, faqList) {
@@ -46,7 +64,7 @@ const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent
     message = message.trim();
     console.log('💬 수신된 메시지:', message);
 
-    // ✅ FAQ 매칭 시 응답
+    // FAQ 매칭 시 응답
     const matchedFAQ = findMatchingFAQ(message, faqList);
     if (matchedFAQ) {
       let conversation = await Conversation.findOne({ sessionId });
@@ -81,7 +99,7 @@ const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent
         id: userMessageId,
       });
 
-      // ✅ FAQ는 stream-chunk 없이 end만 사용해 간결하게 처리
+      // FAQ는 stream-chunk 없이 end만 사용해 간결하게 처리
       socket.emit('stream-start', {
         messageId: faqMessageId,
         timestamp: new Date().toISOString(),
@@ -99,7 +117,7 @@ const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent
       return;
     }
 
-    // 🤖 OpenAI 응답 처리
+    // OpenAI 응답 처리
     let conversation = await Conversation.findOne({ sessionId });
     if (!conversation) {
       conversation = new Conversation({
@@ -194,7 +212,7 @@ const setupSocketConnection = (io) => {
 
     const clientIP = getClientIP(socket);
     const userAgent = socket.handshake.headers['user-agent'] || '';
-    const sessionId = generateSessionId(clientIP, userAgent);
+    const sessionId = socket.handshake.query.sessionId || generateSessionId(clientIP, userAgent);
 
     socket.on('user-message', (message) => {
       handleUserMessage(socket, message, sessionId, clientIP, userAgent);
