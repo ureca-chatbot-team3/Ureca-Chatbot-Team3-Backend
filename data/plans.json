@@ -2,10 +2,7 @@
   {
     "name": "5G 프리미어 에센셜",
     "badge": "인기",
-    "infos": [
-      "데이터 무제한",
-      "테더링+쉐어링 70GB"
-    ],
+    "infos": ["데이터 무제한", "테더링+쉐어링 70GB"],
     "plan_speed": null,
     "price": "월 85,000원",
     "price_value": 85000,
@@ -26,10 +23,7 @@
   {
     "name": "5G 스탠다드",
     "badge": "인기",
-    "infos": [
-      "데이터 150GB",
-      "기본제공량 내 테더링+쉐어링 60GB"
-    ],
+    "infos": ["데이터 150GB", "기본제공량 내 테더링+쉐어링 60GB"],
     "plan_speed": "+다 쓰면 최대 5Mbps",
     "price": "월 75,000원",
     "price_value": 75000,
@@ -50,9 +44,7 @@
   {
     "name": "5G 심플+",
     "badge": "인기",
-    "infos": [
-      "데이터 31GB"
-    ],
+    "infos": ["데이터 31GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 61,000원",
     "price_value": 61000,
@@ -73,21 +65,12 @@
   {
     "name": "5G 프리미어 레귤러",
     "badge": "인기",
-    "infos": [
-      "데이터 무제한",
-      "테더링+쉐어링 80GB"
-    ],
+    "infos": ["데이터 무제한", "테더링+쉐어링 80GB"],
     "plan_speed": null,
     "price": "월 95,000원",
     "price_value": 95000,
     "sale_price": "약정 할인 시 월66,000원",
-    "brands": [
-      "밀리의서재",
-      "유플레이",
-      "아이들나라",
-      "바이브",
-      "지니뮤직"
-    ],
+    "brands": ["밀리의서재", "유플레이", "아이들나라", "바이브", "지니뮤직"],
     "benefits": {
       "미디어 혜택": "콘텐츠, 음악 감상 등",
       "음성통화": "집/이동전화 무제한",
@@ -105,10 +88,7 @@
   {
     "name": "유쓰 5G 스탠다드",
     "badge": "인기",
-    "infos": [
-      "데이터 210GB",
-      "기본제공량 내 테더링+쉐어링 65GB"
-    ],
+    "infos": ["데이터 210GB", "기본제공량 내 테더링+쉐어링 65GB"],
     "plan_speed": "+다 쓰면 최대 5Mbps",
     "price": "월 75,000원",
     "price_value": 75000,
@@ -130,10 +110,7 @@
   {
     "name": "5G 데이터 레귤러",
     "badge": null,
-    "infos": [
-      "데이터 50GB",
-      "기본제공량 내 테더링+쉐어링 40GB"
-    ],
+    "infos": ["데이터 50GB", "기본제공량 내 테더링+쉐어링 40GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 63,000원",
     "price_value": 63000,
@@ -154,10 +131,7 @@
   {
     "name": "5G 데이터 플러스",
     "badge": "최신",
-    "infos": [
-      "데이터 80GB",
-      "기본제공량 내 테더링+쉐어링 45GB"
-    ],
+    "infos": ["데이터 80GB", "기본제공량 내 테더링+쉐어링 45GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 66,000원",
     "price_value": 66000,
@@ -178,9 +152,7 @@
   {
     "name": "5G 라이트+",
     "badge": "최신",
-    "infos": [
-      "데이터 14GB"
-    ],
+    "infos": ["데이터 14GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 55,000원",
     "price_value": 55000,
@@ -201,10 +173,7 @@
   {
     "name": "유쓰 5G 데이터 플러스",
     "badge": "최신",
-    "infos": [
-      "데이터 110GB",
-      "기본제공량 내 테더링+쉐어링 50GB"
-    ],
+    "infos": ["데이터 110GB", "기본제공량 내 테더링+쉐어링 50GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 66,000원",
     "price_value": 66000,
@@ -226,9 +195,7 @@
   {
     "name": "5G 미니",
     "badge": null,
-    "infos": [
-      "데이터 5GB"
-    ],
+    "infos": ["데이터 5GB"],
     "plan_speed": "+ 다 쓰면 최대 400Kbps",
     "price": "월 37,000원",
     "price_value": 37000,
@@ -249,9 +216,7 @@
   {
     "name": "유쓰 5G 라이트+",
     "badge": "최신",
-    "infos": [
-      "데이터 26GB"
-    ],
+    "infos": ["데이터 26GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 55,000원",
     "price_value": 55000,
@@ -272,13 +237,8 @@
   },
   {
     "name": "5G 슬림+",
-    "badge": [
-      "최신",
-      "인기"
-    ],
-    "infos": [
-      "데이터 9GB"
-    ],
+    "badge": ["최신", "인기"],
+    "infos": ["데이터 9GB"],
     "plan_speed": "+다 쓰면 최대 400kbps",
     "price": "월 47,000원",
     "price_value": 47000,
@@ -299,10 +259,7 @@
   {
     "name": "5G 프리미어 플러스",
     "badge": null,
-    "infos": [
-      "데이터 무제한",
-      "테더링+쉐어링 100GB"
-    ],
+    "infos": ["데이터 무제한", "테더링+쉐어링 100GB"],
     "plan_speed": null,
     "price": "월 105,000원",
     "price_value": 105000,
@@ -332,9 +289,7 @@
   {
     "name": "5G 시니어 B형",
     "badge": "최신",
-    "infos": [
-      "데이터 10GB"
-    ],
+    "infos": ["데이터 10GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 43,000원",
     "price_value": 43000,
@@ -356,9 +311,7 @@
   {
     "name": "(LTE) 데이터 시니어 33",
     "badge": null,
-    "infos": [
-      "데이터 1.7GB"
-    ],
+    "infos": ["데이터 1.7GB"],
     "plan_speed": null,
     "price": "월 33,000원",
     "price_value": 33000,
@@ -380,9 +333,7 @@
   {
     "name": "유쓰 5G 슬림+",
     "badge": "최신",
-    "infos": [
-      "데이터 15GB"
-    ],
+    "infos": ["데이터 15GB"],
     "plan_speed": "+다 쓰면 최대 400kbps",
     "price": "월 47,000원",
     "price_value": 47000,
@@ -404,9 +355,7 @@
   {
     "name": "5G 시니어 A형",
     "badge": null,
-    "infos": [
-      "데이터 10GB"
-    ],
+    "infos": ["데이터 10GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 45,000원",
     "price_value": 45000,
@@ -428,10 +377,7 @@
   {
     "name": "유쓰 5G 데이터 레귤러",
     "badge": "최신",
-    "infos": [
-      "데이터 70GB",
-      "기본제공량 내 테더링+쉐어링 45GB"
-    ],
+    "infos": ["데이터 70GB", "기본제공량 내 테더링+쉐어링 45GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 63,000원",
     "price_value": 63000,
@@ -453,9 +399,7 @@
   {
     "name": "(LTE) 데이터 33",
     "badge": null,
-    "infos": [
-      "데이터 1.5GB"
-    ],
+    "infos": ["데이터 1.5GB"],
     "plan_speed": null,
     "price": "월 33,000원",
     "price_value": 33000,
@@ -475,9 +419,7 @@
   {
     "name": "유쓰 5G 미니",
     "badge": "최신",
-    "infos": [
-      "데이터 9GB"
-    ],
+    "infos": ["데이터 9GB"],
     "plan_speed": "+다 쓰면 최대 400Kbps",
     "price": "월 37,000원",
     "price_value": 37000,
@@ -499,9 +441,7 @@
   {
     "name": "유쓰 5G 심플+",
     "badge": "최신",
-    "infos": [
-      "데이터 41GB"
-    ],
+    "infos": ["데이터 41GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 61,000원",
     "price_value": 61000,
@@ -523,9 +463,7 @@
   {
     "name": "5G 베이직+",
     "badge": null,
-    "infos": [
-      "데이터 24GB"
-    ],
+    "infos": ["데이터 24GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 59,000원",
     "price_value": 59000,
@@ -546,9 +484,7 @@
   {
     "name": "5G 시니어 C형",
     "badge": "최신",
-    "infos": [
-      "데이터 10GB"
-    ],
+    "infos": ["데이터 10GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 39,000원",
     "price_value": 39000,
@@ -570,10 +506,7 @@
   {
     "name": "5G 스탠다드 에센셜",
     "badge": null,
-    "infos": [
-      "데이터 125GB",
-      "기본제공량 내 테더링+쉐어링 55GB"
-    ],
+    "infos": ["데이터 125GB", "기본제공량 내 테더링+쉐어링 55GB"],
     "plan_speed": "+다 쓰면 최대 5Mbps",
     "price": "월 70,000원",
     "price_value": 70000,
@@ -594,9 +527,7 @@
   {
     "name": "시니어16.5",
     "badge": null,
-    "infos": [
-      "데이터 300MB"
-    ],
+    "infos": ["데이터 300MB"],
     "plan_speed": null,
     "price": "월 16,500원",
     "price_value": 16500,
@@ -618,10 +549,7 @@
   {
     "name": "(LTE) 추가 요금 걱정 없는 데이터 69",
     "badge": "인기",
-    "infos": [
-      "데이터 일 5GB",
-      "테더링+쉐어링11GB"
-    ],
+    "infos": ["데이터 일 5GB", "테더링+쉐어링11GB"],
     "plan_speed": "+다 쓰면 최대 5Mbps",
     "price": "월 69,000원",
     "price_value": 69000,
@@ -642,10 +570,7 @@
   {
     "name": "5G 데이터 슈퍼",
     "badge": null,
-    "infos": [
-      "데이터 95GB",
-      "기본제공량 내 테더링+쉐어링 50GB"
-    ],
+    "infos": ["데이터 95GB", "기본제공량 내 테더링+쉐어링 50GB"],
     "plan_speed": "+다 쓰면 최대 3Mbps",
     "price": "월 68,000원",
     "price_value": 68000,
@@ -666,10 +591,7 @@
   {
     "name": "유쓰 5G 스탠다드 에센셜",
     "badge": "최신",
-    "infos": [
-      "데이터 185GB",
-      "기본제공량 내 테더링+쉐어링 60GB"
-    ],
+    "infos": ["데이터 185GB", "기본제공량 내 테더링+쉐어링 60GB"],
     "plan_speed": "+다 쓰면 최대 5Mbps",
     "price": "월 70,000원",
     "price_value": 70000,
@@ -691,9 +613,7 @@
   {
     "name": "LTE 표준",
     "badge": null,
-    "infos": [
-      "데이터 1KB당 0.275원"
-    ],
+    "infos": ["데이터 1KB당 0.275원"],
     "plan_speed": null,
     "price": "월 11,990원",
     "price_value": 11990,
@@ -713,10 +633,7 @@
   {
     "name": "5G 시그니처",
     "badge": null,
-    "infos": [
-      "데이터 무제한",
-      "테더링+쉐어링 120GB"
-    ],
+    "infos": ["데이터 무제한", "테더링+쉐어링 120GB"],
     "plan_speed": "+참 쉬운 가족 데이터 60GB",
     "price": "월 130,000원",
     "price_value": 130000,
@@ -747,10 +664,7 @@
   {
     "name": "유쓰 5G 데이터 슈퍼",
     "badge": "최신",
-    "infos": [
-      "데이터 135GB",
-      "기본제공량 내 테더링+쉐어링 55GB"
-    ],
+    "infos": ["데이터 135GB", "기본제공량 내 테더링+쉐어링 55GB"],
     "plan_speed": "+다 쓰면 최대 3Mbps",
     "price": "월 68,000원",
     "price_value": 68000,
@@ -772,9 +686,7 @@
   {
     "name": "유쓰 5G 베이직+",
     "badge": "최신",
-    "infos": [
-      "데이터 36GB"
-    ],
+    "infos": ["데이터 36GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 59,000원",
     "price_value": 59000,
@@ -796,17 +708,12 @@
   {
     "name": "(LTE) 현역병사 데이터 55",
     "badge": null,
-    "infos": [
-      "데이터 매일 5GB",
-      "5GB"
-    ],
+    "infos": ["데이터 매일 5GB", "5GB"],
     "plan_speed": "+다 쓰면 최대 5Mbps",
     "price": "월 55,000원",
     "price_value": 55000,
     "sale_price": "약정 할인 시 월41,250원",
-    "brands": [
-      "바이브"
-    ],
+    "brands": ["바이브"],
     "benefits": {
       "미디어 혜택": "콘텐츠, 음악 감상 등",
       "음성통화": "집/이동전화 무제한",
@@ -823,9 +730,7 @@
   {
     "name": "현역병사 데이터 33",
     "badge": null,
-    "infos": [
-      "데이터 월2GB+매일2GB"
-    ],
+    "infos": ["데이터 월2GB+매일2GB"],
     "plan_speed": "+다 쓰면 최대 3Mbps",
     "price": "월 33,000원",
     "price_value": 33000,
@@ -845,9 +750,7 @@
   {
     "name": "5G 라이트 청소년",
     "badge": null,
-    "infos": [
-      "데이터 8GB"
-    ],
+    "infos": ["데이터 8GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 45,000원",
     "price_value": 45000,
@@ -869,10 +772,7 @@
   {
     "name": "(LTE) 추가 요금 걱정 없는 데이터 시니어 69",
     "badge": null,
-    "infos": [
-      "데이터 매일 5GB",
-      "테더링+쉐어링15GB"
-    ],
+    "infos": ["데이터 매일 5GB", "테더링+쉐어링15GB"],
     "plan_speed": "+다 쓰면 최대 5Mbps",
     "price": "월 69,000원",
     "price_value": 69000,
@@ -894,10 +794,7 @@
   {
     "name": "5G 프리미어 슈퍼",
     "badge": null,
-    "infos": [
-      "데이터 무제한",
-      "테더링+쉐어링 100GB"
-    ],
+    "infos": ["데이터 무제한", "테더링+쉐어링 100GB"],
     "plan_speed": "+참 쉬운 가족 데이터 50GB",
     "price": "월 115,000원",
     "price_value": 115000,
@@ -927,9 +824,7 @@
   {
     "name": "(LTE) 추가 요금 걱정 없는 데이터 청소년 33",
     "badge": null,
-    "infos": [
-      "데이터 2GB"
-    ],
+    "infos": ["데이터 2GB"],
     "plan_speed": "+다 쓰면 최대 400Kbps",
     "price": "월 33,000원",
     "price_value": 33000,
@@ -950,9 +845,7 @@
   {
     "name": "(LTE) 복지 33",
     "badge": null,
-    "infos": [
-      "데이터 2GB"
-    ],
+    "infos": ["데이터 2GB"],
     "plan_speed": null,
     "price": "월 33,000원",
     "price_value": 33000,
@@ -972,9 +865,7 @@
   {
     "name": "(LTE) 복지 49",
     "badge": null,
-    "infos": [
-      "데이터 6GB"
-    ],
+    "infos": ["데이터 6GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 49,000원",
     "price_value": 49000,
@@ -994,10 +885,7 @@
   {
     "name": "(LTE) 추가 요금 걱정 없는 데이터 청소년 69",
     "badge": null,
-    "infos": [
-      "데이터 매일 5GB",
-      "테더링 15GB"
-    ],
+    "infos": ["데이터 매일 5GB", "테더링 15GB"],
     "plan_speed": "+다 쓰면 최대 5Mbps",
     "price": "월 69,000원",
     "price_value": 69000,
@@ -1019,9 +907,7 @@
   {
     "name": "5G 복지 55",
     "badge": null,
-    "infos": [
-      "데이터 14GB"
-    ],
+    "infos": ["데이터 14GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 55,000원",
     "price_value": 55000,
@@ -1042,9 +928,7 @@
   {
     "name": "LTE청소년19",
     "badge": null,
-    "infos": [
-      "데이터 350MB"
-    ],
+    "infos": ["데이터 350MB"],
     "plan_speed": null,
     "price": "월 20,900원",
     "price_value": 20900,
@@ -1065,9 +949,7 @@
   {
     "name": "(LTE) 추가 요금 걱정 없는 데이터 청소년 59",
     "badge": null,
-    "infos": [
-      "데이터 9GB"
-    ],
+    "infos": ["데이터 9GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 59,000원",
     "price_value": 59000,
@@ -1089,10 +971,7 @@
   {
     "name": "5G 복지 75",
     "badge": null,
-    "infos": [
-      "데이터 150GB",
-      "기본제공량 내 테더링+쉐어링 60GB"
-    ],
+    "infos": ["데이터 150GB", "기본제공량 내 테더링+쉐어링 60GB"],
     "plan_speed": "+다 쓰면 최대 5Mbps",
     "price": "월 75,000원",
     "price_value": 75000,
@@ -1113,9 +992,7 @@
   {
     "name": "5G 키즈 29",
     "badge": "최신",
-    "infos": [
-      "데이터 3.3GB"
-    ],
+    "infos": ["데이터 3.3GB"],
     "plan_speed": "+ 다 쓰면 최대 400Kbps",
     "price": "월 29,000원",
     "price_value": 29000,
@@ -1136,16 +1013,12 @@
   {
     "name": "5G 키즈 39",
     "badge": "최신",
-    "infos": [
-      "데이터 5.5GB"
-    ],
+    "infos": ["데이터 5.5GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 39,000원",
     "price_value": 39000,
     "sale_price": "약정 할인 시 월29,250원",
-    "brands": [
-      "바이브"
-    ],
+    "brands": ["바이브"],
     "benefits": {
       "미디어 혜택": "콘텐츠, 음악 감상 등",
       "음성통화": "집/이동전화 무제한",
@@ -1163,16 +1036,12 @@
   {
     "name": "5G 키즈 45",
     "badge": "최신",
-    "infos": [
-      "데이터 9GB"
-    ],
+    "infos": ["데이터 9GB"],
     "plan_speed": "+다 쓰면 최대 1Mbps",
     "price": "월 45,000원",
     "price_value": 45000,
     "sale_price": "약정 할인 시 월33,750원",
-    "brands": [
-      "바이브"
-    ],
+    "brands": ["바이브"],
     "benefits": {
       "미디어 혜택": "콘텐츠, 음악 감상 등",
       "음성통화": "집/이동전화 무제한",
@@ -1190,9 +1059,7 @@
   {
     "name": "LTE 선택형 요금제",
     "badge": null,
-    "infos": [
-      "데이터 250MB~1GB"
-    ],
+    "infos": ["데이터 250MB~1GB"],
     "plan_speed": null,
     "price": "월 20,900원",
     "price_value": 20900,
@@ -1212,9 +1079,7 @@
   {
     "name": "LTE 키즈 22(만 12세 이하)",
     "badge": null,
-    "infos": [
-      "데이터 700MB"
-    ],
+    "infos": ["데이터 700MB"],
     "plan_speed": "+다 쓰면 최대 400Kbps",
     "price": "월 22,000원",
     "price_value": 22000,
