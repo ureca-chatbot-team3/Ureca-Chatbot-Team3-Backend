@@ -2,6 +2,7 @@ const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
 const { getKakaoToken, getKakaoUserInfo } = require('../utils/kakao');
 const ResponseHandler = require('../utils/responseHandler');
+const Validators = require('../utils/validators');
 
 // 일반 로그인
 const login = async (req, res) => {
@@ -44,10 +45,22 @@ const register = async (req, res) => {
     const { nickname, email, password, birthYear } = req.body;
 
     if (!nickname || !email || !password || !birthYear) {
-      return res.status(400).json({
-        success: false,
-        message: '모든 필드를 입력해주세요.'
-      });
+      return ResponseHandler.sendValidationError(res, '모든 필드를 입력해주세요.');
+    }
+
+    // 입력 값 검증
+    try {
+      Validators.validateEmail(email);
+      Validators.validateNickname(nickname);
+      Validators.validatePassword(password);
+      
+      const currentYear = new Date().getFullYear();
+      const year = parseInt(birthYear);
+      if (isNaN(year) || year < 1900 || year > currentYear) {
+        throw new Error('올바른 출생연도를 입력해주세요.');
+      }
+    } catch (validationError) {
+      return ResponseHandler.sendValidationError(res, validationError.message);
     }
 
     // 중복 검사
@@ -56,30 +69,22 @@ const register = async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: '이미 사용 중인 이메일 또는 닉네임입니다.'
-      });
+      return ResponseHandler.sendConflict(res, '이미 사용 중인 이메일 또는 닉네임입니다.');
     }
 
-    const user = new User({ nickname, email, password, birthYear });
+    const user = new User({ nickname, email, password, birthYear: parseInt(birthYear) });
     await user.save();
 
-    res.status(201).json({
-      success: true,
-      data: {
-        nickname: user.nickname,
-        email: user.email,
-        birthYear: user.birthYear,
-        age: user.getAge(),
-        ageGroup: user.getAgeGroup()
-      }
-    });
+    return ResponseHandler.sendCreated(res, {
+      nickname: user.nickname,
+      email: user.email,
+      birthYear: user.birthYear,
+      age: user.getAge(),
+      ageGroup: user.getAgeGroup()
+    }, '회원가입이 성공적으로 완료되었습니다.');
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '회원가입 처리 중 오류가 발생했습니다.'
-    });
+    console.error('회원가입 처리 오류:', error);
+    return ResponseHandler.handleDatabaseError(res, error, '회원가입 처리 중 오류가 발생했습니다.');
   }
 };
 
@@ -133,7 +138,7 @@ const kakaoCallback = async (req, res) => {
       maxAge: 1000 * 60 * 60, // 1시간
     });
 
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+    res.redirect(`${process.env.FRONTEND_URL}/`);
   } catch (error) {
     res.redirect(`${process.env.FRONTEND_URL}/login?error=kakao_auth_failed`);
   }

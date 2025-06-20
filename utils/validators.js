@@ -184,8 +184,13 @@ class Validators {
     
     const trimmed = nickname.trim();
     
-    if (trimmed.length < 2 || trimmed.length > 20) {
-      throw new Error('닉네임은 2자에서 20자 사이여야 합니다.');
+    if (trimmed.length < 2 || trimmed.length > 8) {
+      throw new Error('닉네임은 2자에서 8자 사이여야 합니다.');
+    }
+    
+    // 공백 포함 불가
+    if (/\s/.test(trimmed)) {
+      throw new Error('닉네임에는 공백을 포함할 수 없습니다.');
     }
     
     // 한글, 영문, 숫자만 허용
@@ -202,13 +207,17 @@ class Validators {
       throw new Error('비밀번호가 필요합니다.');
     }
     
-    if (password.length < 8 || password.length > 128) {
-      throw new Error('비밀번호는 8자에서 128자 사이여야 합니다.');
+    if (password.length < 10 || password.length > 20) {
+      throw new Error('비밀번호는 10자에서 20자 사이여야 합니다.');
     }
     
-    // 최소한 영문, 숫자 포함
-    if (!/(?=.*[a-zA-Z])(?=.*\d)/.test(password)) {
-      throw new Error('비밀번호는 영문과 숫자를 포함해야 합니다.');
+    // 영문, 숫자, 특수문자 모두 포함
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (!hasLetter || !hasNumber || !hasSpecialChar) {
+      throw new Error('비밀번호는 영문, 숫자, 특수문자를 모두 포함해야 합니다.');
     }
     
     return password;
