@@ -1,23 +1,17 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const router = express.Router();
+const Faq = require('../models/Faq');
 
-router.get('/', (req, res) => {
-  const filePath = path.join(__dirname, '../data/faq.json');
-  fs.readFile(filePath, 'utf8', (err, data) => {
-    if (err) {
-      console.error('FAQ 파일 읽기 오류:', err);
-      return res.status(500).json({ error: 'FAQ 데이터를 불러올 수 없습니다.' });
-    }
-    try {
-      const faq = JSON.parse(data);
-      res.json({ faq }); // ✅ 여기를 객체로 감싸야 프론트에서 res.data.faq로 읽을 수 있음
-    } catch (parseErr) {
-      console.error('FAQ JSON 파싱 오류:', parseErr);
-      res.status(500).json({ error: 'FAQ JSON 파싱 오류' });
-    }
-  });
+// GET /api/faq - 랜덤 추천 질문 4개
+router.get('/', async (req, res) => {
+  try {
+    const faqs = await Faq.aggregate([{ $sample: { size: 4 } }]); // 랜덤 4개
+    const questions = faqs.map(faq => faq.question);
+    res.json(questions);
+  } catch (err) {
+    console.error('❌ FAQ 조회 오류:', err.message);
+    res.status(500).json({ error: 'FAQ를 불러오는 중 오류 발생' });
+  }
 });
 
 module.exports = router;

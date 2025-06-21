@@ -2,7 +2,7 @@ const OpenAI = require('openai');
 const Conversation = require('../models/Conversation');
 const { getClientIP, generateSessionId } = require('../utils/helpers');
 const { fetchPlansForChatbotSummary } = require('../utils/chatbotPlanHelper');
-const faqList = require('../data/faq.json');
+const Faq = require('../models/Faq');
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -60,8 +60,9 @@ ${summaryText}
   return prompt;
 };
 
-function findMatchingFAQ(userQuestion, faqList) {
+async function findMatchingFAQ(userQuestion) {
   const cleaned = userQuestion.trim().toLowerCase();
+  const faqList = await Faq.find({}); // DB에서 FAQ 전부 불러옴
 
   return faqList.find((faq) => {
     const baseQuestion = faq.question.trim().toLowerCase();
@@ -79,12 +80,13 @@ function findMatchingFAQ(userQuestion, faqList) {
 }
 
 
+
 const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent) => {
   try {
     message = message.trim();
     console.log('💬 수신된 메시지:', message);
 
-    const matchedFAQ = findMatchingFAQ(message, faqList);
+    const matchedFAQ = await findMatchingFAQ(message);
     if (matchedFAQ) {
       let conversation = await Conversation.findOne({ sessionId });
       if (!conversation) {
