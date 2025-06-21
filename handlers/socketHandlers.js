@@ -62,12 +62,22 @@ ${summaryText}
 
 function findMatchingFAQ(userQuestion, faqList) {
   const cleaned = userQuestion.trim().toLowerCase();
+
   return faqList.find((faq) => {
-    const base = faq.question.trim().toLowerCase();
+    const baseQuestion = faq.question.trim().toLowerCase();
     const variations = (faq.variations || []).map((v) => v.trim().toLowerCase());
-    return cleaned === base || variations.includes(cleaned);
+    const keywords = (faq.keywords || []).map((k) => k.trim().toLowerCase());
+
+    // 완전 일치 or variations 포함 여부 체크
+    if (cleaned === baseQuestion || variations.includes(cleaned)) {
+      return true;
+    }
+
+    // 키워드 포함 여부 체크
+    return keywords.some((keyword) => cleaned.includes(keyword));
   });
 }
+
 
 const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent) => {
   try {
