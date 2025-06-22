@@ -83,13 +83,14 @@ const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent
     console.log('💬 수신된 메시지:', message);
 
     const matchedFAQ = await findMatchingFAQ(message);
-    const query = socket.userId ? { userId: socket.userId } : { sessionId };
+    const safeUserId = socket.userId && socket.userId !== 'undefined' && socket.userId !== 'null' ? socket.userId : null;
+    const query = safeUserId ? { userId: safeUserId } : { sessionId };
     let conversation = await Conversation.findOne(query);
 
     if (!conversation) {
       conversation = new Conversation({
         sessionId,
-        userId: socket.userId || null,
+        userId: safeUserId,
         messages: [],
         metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
       });
@@ -215,7 +216,8 @@ const setupSocketConnection = (io) => {
     const sessionId = socket.handshake.query.sessionId || generateSessionId(clientIP, userAgent);
 
     const rawUserId = socket.handshake.query.userId;
-    socket.userId = rawUserId && rawUserId !== 'null' ? rawUserId : null;
+    const safeUserId = rawUserId && rawUserId !== 'undefined' && rawUserId !== 'null' ? rawUserId : null;
+    socket.userId = safeUserId;
 
     socket.on('authenticate', ({ userId }) => {
       socket.userId = userId;
@@ -251,13 +253,14 @@ const setupSocketConnection = (io) => {
         const finalMessage = message || tempAssistantMessage;
         if (!finalMessage?.content) return;
 
-        const query = socket.userId ? { userId: socket.userId } : { sessionId };
+        const userId = socket.userId && socket.userId !== 'undefined' && socket.userId !== 'null' ? socket.userId : null;
+        const query = userId ? { userId } : { sessionId };
         let conversation = await Conversation.findOne(query);
 
         if (!conversation) {
           conversation = new Conversation({
             sessionId,
-            userId: socket.userId || null,
+            userId,
             messages: [],
             metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
           });
