@@ -13,7 +13,13 @@ const authenticateToken = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.userId).select('-password');
+    
+    // 비밀번호 변경 API의 경우 비밀번호 포함해서 조회
+    const shouldIncludePassword = req.url.includes('/change-password');
+    
+    const user = shouldIncludePassword 
+      ? await User.findById(decoded.userId) // 비밀번호 포함
+      : await User.findById(decoded.userId).select('-password'); // 비밀번호 제외
     
     if (!user) {
       return res.status(401).json({
