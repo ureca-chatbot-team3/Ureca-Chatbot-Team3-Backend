@@ -62,24 +62,20 @@ ${summaryText}
 
 async function findMatchingFAQ(userQuestion) {
   const cleaned = userQuestion.trim().toLowerCase();
-  const faqList = await Faq.find({}); // DB에서 FAQ 전부 불러옴
+  const faqList = await Faq.find({});
 
   return faqList.find((faq) => {
     const baseQuestion = faq.question.trim().toLowerCase();
     const variations = (faq.variations || []).map((v) => v.trim().toLowerCase());
     const keywords = (faq.keywords || []).map((k) => k.trim().toLowerCase());
 
-    // 완전 일치 or variations 포함 여부 체크
-    if (cleaned === baseQuestion || variations.includes(cleaned)) {
-      return true;
-    }
-
-    // 키워드 포함 여부 체크
-    return keywords.some((keyword) => cleaned.includes(keyword));
+    return (
+      cleaned === baseQuestion ||
+      variations.includes(cleaned) ||
+      keywords.some((keyword) => cleaned.includes(keyword))
+    );
   });
 }
-
-
 
 const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent) => {
   try {
@@ -87,22 +83,25 @@ const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent
     console.log('💬 수신된 메시지:', message);
 
     const matchedFAQ = await findMatchingFAQ(message);
+    const query = socket.userId ? { userId: socket.userId } : { sessionId };
+    let conversation = await Conversation.findOne(query);
+
+    if (!conversation) {
+      conversation = new Conversation({
+        sessionId,
+        userId: socket.userId || null,
+        messages: [],
+        metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
+      });
+    }
+
+    const userMessage = {
+      role: 'user',
+      content: message,
+      timestamp: new Date(),
+    };
+
     if (matchedFAQ) {
-      let conversation = await Conversation.findOne({ sessionId });
-      if (!conversation) {
-        conversation = new Conversation({
-          sessionId,
-          messages: [],
-          metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
-        });
-      }
-
-      const userMessage = {
-        role: 'user',
-        content: message,
-        timestamp: new Date(),
-      };
-
       const faqResponse = {
         role: 'assistant',
         content: matchedFAQ.answer,
@@ -115,7 +114,7 @@ const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent
       const faqMessageId = 'faq-' + Date.now();
       socket.emit('user-message-confirmed', {
         ...userMessage,
-        id: conversation.messages.at(-2)?._id,
+        id: faqMessageId + '-user',
       });
 
       socket.emit('stream-start', {
@@ -134,21 +133,6 @@ const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent
 
       return;
     }
-
-    let conversation = await Conversation.findOne({ sessionId });
-    if (!conversation) {
-      conversation = new Conversation({
-        sessionId,
-        messages: [],
-        metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
-      });
-    }
-
-    const userMessage = {
-      role: 'user',
-      content: message,
-      timestamp: new Date(),
-    };
 
     conversation.messages.push(userMessage);
     await conversation.save();
@@ -230,6 +214,14 @@ const setupSocketConnection = (io) => {
     const userAgent = socket.handshake.headers['user-agent'] || '';
     const sessionId = socket.handshake.query.sessionId || generateSessionId(clientIP, userAgent);
 
+    const rawUserId = socket.handshake.query.userId;
+    socket.userId = rawUserId && rawUserId !== 'null' ? rawUserId : null;
+
+    socket.on('authenticate', ({ userId }) => {
+      socket.userId = userId;
+      console.log('🔐 사용자 인증됨:', userId);
+    });
+
     socket.on('user-message', (message) => {
       handleUserMessage(socket, message, sessionId, clientIP, userAgent);
     });
@@ -259,22 +251,16 @@ const setupSocketConnection = (io) => {
         const finalMessage = message || tempAssistantMessage;
         if (!finalMessage?.content) return;
 
-        let conversation = await Conversation.findOne({ sessionId });
+        const query = socket.userId ? { userId: socket.userId } : { sessionId };
+        let conversation = await Conversation.findOne(query);
+
         if (!conversation) {
-          try {
-            conversation = new Conversation({
-              sessionId,
-              messages: [],
-              metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
-            });
-            await conversation.save();
-          } catch (err) {
-            if (err.code === 11000) {
-              conversation = await Conversation.findOne({ sessionId });
-            } else {
-              throw err;
-            }
-          }
+          conversation = new Conversation({
+            sessionId,
+            userId: socket.userId || null,
+            messages: [],
+            metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
+          });
         }
 
         conversation.messages.push({

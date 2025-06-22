@@ -150,6 +150,7 @@ const getProfile = async (req, res) => {
     res.json({
       success: true,
       data: {
+        _id: req.user._id,
         nickname: req.user.nickname,
         email: req.user.email,
         birthYear: req.user.birthYear,

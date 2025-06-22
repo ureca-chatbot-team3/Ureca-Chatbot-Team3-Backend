@@ -25,6 +25,11 @@ const conversationSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    userId: {
+      type: String, // ✅ 로그인 사용자 ID (있을 수도, 없을 수도 있음)
+      required: false,
+      index: true,
+    },
     messages: [messageSchema],
     metadata: {
       ipAddress: String,
