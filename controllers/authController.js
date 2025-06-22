@@ -147,6 +147,8 @@ const kakaoCallback = async (req, res) => {
 // 프로필 조회
 const getProfile = async (req, res) => {
   try {
+    const isKakaoUser = !!req.user.kakaoId || !req.user.password;
+    
     res.json({
       success: true,
       data: {
@@ -154,7 +156,9 @@ const getProfile = async (req, res) => {
         email: req.user.email,
         birthYear: req.user.birthYear,
         age: req.user.getAge(),
-        ageGroup: req.user.getAgeGroup()
+        ageGroup: req.user.getAgeGroup(),
+        kakaoId: req.user.kakaoId || null,
+        isKakaoUser: isKakaoUser
       }
     });
   } catch (error) {
@@ -199,6 +203,114 @@ const deleteAccount = async (req, res) => {
   }
 };
 
+// 프로필 업데이트
+const updateProfile = async (req, res) => {
+  try {
+    const { nickname, birthYear } = req.body;
+    const updateData = {};
+    
+    // 닉네임 업데이트
+    if (nickname !== undefined) {
+      if (!nickname || nickname.trim().length < 2 || nickname.trim().length > 8) {
+        return ResponseHandler.sendValidationError(res, '닉네임은 2-8자 사이여야 합니다.');
+      }
+      
+      if (!/^[가-힣a-zA-Z0-9]+$/.test(nickname.trim()) || /\s/.test(nickname.trim())) {
+        return ResponseHandler.sendValidationError(res, '닉네임은 한글, 영문, 숫자만 사용할 수 있으며 공백을 포함할 수 없습니다.');
+      }
+      
+      // 닉네임 중복 검사
+      const existingUser = await User.findOne({ nickname: nickname.trim(), _id: { $ne: req.user._id } });
+      if (existingUser) {
+        return ResponseHandler.sendConflict(res, '이미 사용 중인 닉네임입니다.');
+      }
+      
+      updateData.nickname = nickname.trim();
+    }
+    
+    // 출생연도 업데이트
+    if (birthYear !== undefined) {
+      const currentYear = new Date().getFullYear();
+      const year = parseInt(birthYear);
+      
+      if (isNaN(year) || year < 1900 || year > currentYear) {
+        return ResponseHandler.sendValidationError(res, '올바른 출생연도를 입력해주세요.');
+      }
+      
+      updateData.birthYear = year;
+    }
+    
+    // 변경사항이 없으면 오류 반환
+    if (Object.keys(updateData).length === 0) {
+      return ResponseHandler.sendValidationError(res, '변경할 정보가 없습니다.');
+    }
+    
+    // 사용자 정보 업데이트
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+    
+    return ResponseHandler.sendSuccess(res, {
+      nickname: updatedUser.nickname,
+      email: updatedUser.email,
+      birthYear: updatedUser.birthYear,
+      age: updatedUser.getAge(),
+      ageGroup: updatedUser.getAgeGroup()
+    }, '프로필이 성공적으로 업데이트되었습니다.');
+    
+  } catch (error) {
+    console.error('프로필 업데이트 오류:', error);
+    return ResponseHandler.handleDatabaseError(res, error, '프로필 업데이트 중 오류가 발생했습니다.');
+  }
+};
+
+// 비밀번호 변경
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    if (!currentPassword || !newPassword) {
+      return ResponseHandler.sendValidationError(res, '현재 비밀번호와 새 비밀번호를 모두 입력해주세요.');
+    }
+    
+    // 카카오 사용자는 비밀번호 변경 불가
+    if (req.user.kakaoId && !req.user.password) {
+      return ResponseHandler.sendValidationError(res, '카카오 로그인 사용자는 비밀번호를 변경할 수 없습니다.');
+    }
+    
+    // 현재 비밀번호 확인
+    const isCurrentPasswordValid = await req.user.checkPassword(currentPassword);
+    
+    if (!isCurrentPasswordValid) {
+      return ResponseHandler.sendUnauthorized(res, '현재 비밀번호가 일치하지 않습니다.');
+    }
+    
+    // 새 비밀번호 유효성 검사
+    try {
+      Validators.validatePassword(newPassword);
+    } catch (validationError) {
+      return ResponseHandler.sendValidationError(res, validationError.message);
+    }
+    
+    // 현재 비밀번호와 새 비밀번호가 같은지 확인
+    if (currentPassword === newPassword) {
+      return ResponseHandler.sendValidationError(res, '새 비밀번호는 현재 비밀번호와 달라야 합니다.');
+    }
+    
+    // 비밀번호 업데이트
+    req.user.password = newPassword;
+    await req.user.save();
+    
+    return ResponseHandler.sendSuccess(res, null, '비밀번호가 성공적으로 변경되었습니다.');
+    
+  } catch (error) {
+    console.error('비밀번호 변경 오류:', error);
+    return ResponseHandler.sendError(res, '비밀번호 변경 중 오류가 발생했습니다.');
+  }
+};
+
 module.exports = {
   login,
   register,
@@ -206,5 +318,7 @@ module.exports = {
   kakaoCallback,
   getProfile,
   logout,
-  deleteAccount
+  deleteAccount,
+  updateProfile,
+  changePassword
 };

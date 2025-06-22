@@ -7,7 +7,9 @@ const {
   kakaoCallback,
   getProfile,
   logout,
-  deleteAccount
+  deleteAccount,
+  updateProfile,
+  changePassword
 } = require('../controllers/authController');
 const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
@@ -64,6 +66,8 @@ router.post('/register', validateRegister, register);
 router.get('/kakao', kakaoLogin);
 router.get('/kakao/callback', kakaoCallback);
 router.get('/profile', authenticateToken, getProfile);
+router.put('/profile', authenticateToken, updateProfile);
+router.put('/change-password', authenticateToken, changePassword);
 router.post('/logout', authenticateToken, logout);
 router.delete('/delete-account', authenticateToken, deleteAccount);
 

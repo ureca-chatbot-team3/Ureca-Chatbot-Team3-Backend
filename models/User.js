@@ -55,6 +55,15 @@ userSchema.pre('save', async function(next) {
 
 // 비밀번호 확인 메서드
 userSchema.methods.checkPassword = async function(candidatePassword) {
+  // 비밀번호가 없는 경우 (카카오 사용자 등)
+  if (!this.password) {
+    return false;
+  }
+  
+  if (!candidatePassword) {
+    return false;
+  }
+  
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
