@@ -23,8 +23,9 @@ const login = async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 1000 * 60 * 60, // 1시간
+      domain: process.env.NODE_ENV === 'production' ? undefined : undefined
     });
 
     const userData = {
@@ -134,8 +135,9 @@ const kakaoCallback = async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 1000 * 60 * 60, // 1시간
+      domain: process.env.NODE_ENV === 'production' ? undefined : undefined
     });
 
     res.redirect(`${process.env.FRONTEND_URL}/`);

@@ -21,7 +21,11 @@ const server = http.createServer(app);
 // ✅ Socket.IO 인스턴스 생성
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:5173",
+      "https://yoplan.vercel.app",
+      "https://ureca-chatbot-team3-frontend.vercel.app"
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -58,8 +62,15 @@ app.use(
 // ✅ 공통 미들웨어
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: [
+      process.env.FRONTEND_URL || "http://localhost:5173",
+      "https://yoplan.vercel.app",
+      "https://ureca-chatbot-team3-frontend.vercel.app"
+    ],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposedHeaders: ['Set-Cookie']
   })
 );
 app.use(express.json({ limit: "10mb" }));
