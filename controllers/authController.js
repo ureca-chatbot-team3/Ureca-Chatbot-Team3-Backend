@@ -4,6 +4,14 @@ const { getKakaoToken, getKakaoUserInfo } = require('../utils/kakao');
 const ResponseHandler = require('../utils/responseHandler');
 const Validators = require('../utils/validators');
 
+// 쿠키 옵션 유틸리티 함수
+const getCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  domain: process.env.NODE_ENV === 'production' ? undefined : undefined
+});
+
 // 일반 로그인
 const login = async (req, res) => {
   try {
@@ -21,11 +29,8 @@ const login = async (req, res) => {
     const token = generateToken(user._id);
     
     res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      ...getCookieOptions(),
       maxAge: 1000 * 60 * 60, // 1시간
-      domain: process.env.NODE_ENV === 'production' ? undefined : undefined
     });
 
     const userData = {
@@ -133,11 +138,8 @@ const kakaoCallback = async (req, res) => {
     const token = generateToken(user._id);
     
     res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      ...getCookieOptions(),
       maxAge: 1000 * 60 * 60, // 1시간
-      domain: process.env.NODE_ENV === 'production' ? undefined : undefined
     });
 
     res.redirect(`${process.env.FRONTEND_URL}/`);
@@ -175,7 +177,9 @@ const getProfile = async (req, res) => {
 // 로그아웃
 const logout = async (req, res) => {
   try {
-    res.clearCookie('token');
+    // 쿠키 설정과 동일한 옵션으로 삭제
+    res.clearCookie('token', getCookieOptions());
+    
     res.json({
       success: true,
       message: '로그아웃 되었습니다.'
@@ -192,7 +196,9 @@ const logout = async (req, res) => {
 const deleteAccount = async (req, res) => {
   try {
     await User.findByIdAndDelete(req.user._id);
-    res.clearCookie('token');
+    
+    // 쿠키 설정과 동일한 옵션으로 삭제
+    res.clearCookie('token', getCookieOptions());
     
     res.json({
       success: true,
