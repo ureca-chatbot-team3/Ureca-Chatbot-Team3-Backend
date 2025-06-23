@@ -11,6 +11,7 @@ const openai = new OpenAI({
 let cachedPlanSummary = null;
 let lastCacheTime = 0;
 const CACHE_DURATION_MS = 15 * 60 * 1000;
+const CONVERSATION_TIMEOUT = 15 * 60 * 1000;
 
 const generateSystemPrompt = async () => {
   const now = Date.now();
@@ -77,136 +78,6 @@ async function findMatchingFAQ(userQuestion) {
   });
 }
 
-const handleUserMessage = async (socket, message, sessionId, clientIP, userAgent) => {
-  try {
-    message = message.trim();
-    console.log('💬 수신된 메시지:', message);
-
-    const matchedFAQ = await findMatchingFAQ(message);
-    const safeUserId = socket.userId && socket.userId !== 'undefined' && socket.userId !== 'null' ? socket.userId : null;
-    const query = safeUserId ? { userId: safeUserId } : { sessionId };
-    let conversation = await Conversation.findOne(query);
-
-    if (!conversation) {
-      conversation = new Conversation({
-        sessionId,
-        userId: safeUserId,
-        messages: [],
-        metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
-      });
-    }
-
-    const userMessage = {
-      role: 'user',
-      content: message,
-      timestamp: new Date(),
-    };
-
-    if (matchedFAQ) {
-      const faqResponse = {
-        role: 'assistant',
-        content: matchedFAQ.answer,
-        timestamp: new Date(),
-      };
-
-      conversation.messages.push(userMessage, faqResponse);
-      await conversation.save();
-
-      const faqMessageId = 'faq-' + Date.now();
-      socket.emit('user-message-confirmed', {
-        ...userMessage,
-        id: faqMessageId + '-user',
-      });
-
-      socket.emit('stream-start', {
-        messageId: faqMessageId,
-        timestamp: new Date().toISOString(),
-      });
-
-      socket.emit('stream-end', {
-        message: {
-          id: faqMessageId,
-          role: 'assistant',
-          content: matchedFAQ.answer,
-          timestamp: new Date(),
-        },
-      });
-
-      return;
-    }
-
-    conversation.messages.push(userMessage);
-    await conversation.save();
-
-    socket.emit('user-message-confirmed', {
-      ...userMessage,
-      id: conversation.messages.at(-1)._id,
-    });
-
-    const systemPrompt = await generateSystemPrompt();
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...conversation.messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      })),
-    ];
-
-    const tempMessageId = 'temp-' + Date.now();
-    socket.emit('stream-start', {
-      messageId: tempMessageId,
-      timestamp: new Date().toISOString(),
-    });
-
-    const stream = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages,
-      stream: true,
-      temperature: 0.7,
-      max_tokens: 500,
-    });
-
-    let fullResponse = '';
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      if (content) {
-        fullResponse += content;
-        socket.emit('stream-chunk', content);
-      }
-    }
-
-    const assistantMessage = {
-      role: 'assistant',
-      content: fullResponse,
-      timestamp: new Date(),
-    };
-
-    conversation.messages.push(assistantMessage);
-    await conversation.save();
-
-    socket.emit('stream-end', {
-      message: {
-        ...assistantMessage,
-        id: conversation.messages.at(-1)._id,
-      },
-    });
-  } catch (error) {
-    console.error('❌ 메시지 처리 오류:', error.message);
-    socket.emit('error', {
-      message: '메시지 처리 중 오류가 발생했습니다.',
-      details: error.message,
-    });
-
-    socket.emit('stream-end', {
-      message: {
-        role: 'assistant',
-        content: '문제가 발생했지만 처리는 완료되었습니다.',
-        timestamp: new Date(),
-      },
-    });
-  }
-};
-
 const setupSocketConnection = (io) => {
   io.on('connection', (socket) => {
     console.log('🔌 클라이언트 연결됨:', socket.id);
@@ -214,27 +85,172 @@ const setupSocketConnection = (io) => {
     const clientIP = getClientIP(socket);
     const userAgent = socket.handshake.headers['user-agent'] || '';
     const sessionId = socket.handshake.query.sessionId || generateSessionId(clientIP, userAgent);
-
     const rawUserId = socket.handshake.query.userId;
     const safeUserId = rawUserId && rawUserId !== 'undefined' && rawUserId !== 'null' ? rawUserId : null;
     socket.userId = safeUserId;
+
+    let endTimer = null;
+
+   const scheduleEndMessage = async () => {
+  if (endTimer) clearTimeout(endTimer);
+
+  console.log('⏳ [예약됨] scheduleEndMessage 호출됨');
+  endTimer = setTimeout(async () => {
+    console.log('⏱️ [자동종료 타이머 실행 시작]');
+
+    const userId = socket.userId && socket.userId !== 'undefined' && socket.userId !== 'null' ? socket.userId : null;
+    const query = userId ? { userId } : { sessionId };
+    let conversation = await Conversation.findOne(query).sort({ updatedAt: -1 });
+
+    if (!conversation) {
+      console.log('⚠️ 대화 없음. 종료 메시지 생략됨');
+      return;
+    }
+
+    const endMessage = {
+      role: 'system',
+      content: '💬 이 대화는 종료되었습니다.',
+      type: 'notice',
+      timestamp: new Date(),
+    };
+
+    conversation.messages.push(endMessage);
+    await conversation.save();
+
+    console.log(`⏱️ [자동종료] ${userId || sessionId} 대화 종료 메시지 전송됨`);
+
+    socket.emit('stream-end', {
+      message: { ...endMessage, id: conversation.messages.at(-1)._id },
+    });
+  }, CONVERSATION_TIMEOUT);
+};
+
 
     socket.on('authenticate', ({ userId }) => {
       socket.userId = userId;
       console.log('🔐 사용자 인증됨:', userId);
     });
 
-    socket.on('user-message', (message) => {
-      handleUserMessage(socket, message, sessionId, clientIP, userAgent);
+    socket.on('user-message', async (message) => {
+      if (endTimer) clearTimeout(endTimer); // 타이머 초기화
+      try {
+        message = message.trim();
+        console.log('💬 수신된 메시지:', message);
+
+        const matchedFAQ = await findMatchingFAQ(message);
+        const userId = socket.userId && socket.userId !== 'undefined' && socket.userId !== 'null' ? socket.userId : null;
+        const query = userId ? { userId } : { sessionId };
+        let conversation = await Conversation.findOne(query).sort({ updatedAt: -1 });
+
+        const now = Date.now();
+        const lastUpdated = conversation?.updatedAt?.getTime() || 0;
+        const isExpired = now - lastUpdated > CONVERSATION_TIMEOUT;
+
+        if (!conversation || isExpired) {
+          conversation = new Conversation({
+            userId,
+            sessionId,
+            messages: [],
+            metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
+          });
+        }
+
+        const userMessage = {
+          role: 'user',
+          content: message,
+          type: 'text',
+          timestamp: new Date(),
+        };
+
+        if (matchedFAQ) {
+          const faqResponse = {
+            role: 'assistant',
+            content: matchedFAQ.answer,
+            type: 'faq',
+            timestamp: new Date(),
+          };
+
+          conversation.messages.push(userMessage, faqResponse);
+          await conversation.save();
+
+          const faqMessageId = 'faq-' + Date.now();
+          socket.emit('user-message-confirmed', { ...userMessage, id: faqMessageId + '-user' });
+          socket.emit('stream-start', { messageId: faqMessageId, timestamp: new Date().toISOString() });
+          socket.emit('stream-end', { message: { id: faqMessageId, role: 'assistant', content: matchedFAQ.answer, type: 'faq', timestamp: new Date() } });
+          scheduleEndMessage();
+          return;
+        }
+
+        conversation.messages.push(userMessage);
+        await conversation.save();
+
+        
+
+        const systemPrompt = await generateSystemPrompt();
+        const messages = [
+          { role: 'system', content: systemPrompt },
+          ...conversation.messages.map((msg) => ({ role: msg.role, content: msg.content }))
+        ];
+
+        const tempMessageId = 'temp-' + Date.now();
+        socket.emit('stream-start', { messageId: tempMessageId, timestamp: new Date().toISOString() });
+
+        const stream = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages,
+          stream: true,
+          temperature: 0.7,
+          max_tokens: 500,
+        });
+
+        let fullResponse = '';
+        for await (const chunk of stream) {
+          const content = chunk.choices[0]?.delta?.content || '';
+          if (content) {
+            fullResponse += content;
+            socket.emit('stream-chunk', content);
+          }
+        }
+
+        const assistantMessage = {
+          role: 'assistant',
+          content: fullResponse,
+          type: 'text',
+          timestamp: new Date(),
+        };
+
+        conversation.messages.push(assistantMessage);
+        await conversation.save();
+
+        socket.emit('stream-end', {
+          message: { ...assistantMessage, id: conversation.messages.at(-1)._id },
+        });
+
+        scheduleEndMessage(); // ⏱️ 자동 종료 예약
+      } catch (error) {
+        console.error('❌ 메시지 처리 오류:', error.message);
+        socket.emit('error', {
+          message: '메시지 처리 중 오류가 발생했습니다.',
+          details: error.message,
+        });
+        socket.emit('stream-end', {
+          message: {
+            role: 'assistant',
+            content: '문제가 발생했지만 처리는 완료되었습니다.',
+            type: 'text',
+            timestamp: new Date(),
+          },
+        });
+      }
     });
 
     let tempAssistantMessage = null;
 
     socket.on('stream-start', ({ role = 'assistant', content = '' }) => {
-      console.log('📥 stream-start 수신됨:', content);
       tempAssistantMessage = {
         role,
         content,
+        type: 'text',
         timestamp: new Date(),
       };
     });
@@ -246,7 +262,7 @@ const setupSocketConnection = (io) => {
     });
 
     socket.on('stream-end', async (data = {}) => {
-      const { message } = data;
+      const { message, userMessage } = data;
       console.log('📤 stream-end 저장 시작');
 
       try {
@@ -255,23 +271,42 @@ const setupSocketConnection = (io) => {
 
         const userId = socket.userId && socket.userId !== 'undefined' && socket.userId !== 'null' ? socket.userId : null;
         const query = userId ? { userId } : { sessionId };
-        let conversation = await Conversation.findOne(query);
+        let conversation = await Conversation.findOne(query).sort({ updatedAt: -1 });
 
-        if (!conversation) {
+        const now = Date.now();
+        const lastUpdated = conversation?.updatedAt?.getTime() || 0;
+        const isExpired = now - lastUpdated > CONVERSATION_TIMEOUT;
+
+        if (!conversation || isExpired) {
           conversation = new Conversation({
-            sessionId,
             userId,
+            sessionId,
             messages: [],
             metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
           });
         }
 
-        conversation.messages.push({
+        const newMessages = [];
+
+        if (userMessage?.content) {
+          newMessages.push({
+            role: 'user',
+            content: userMessage.content,
+            type: userMessage.type || 'text',
+            timestamp: new Date(userMessage.timestamp) || new Date(),
+          });
+        }
+
+        newMessages.push({
           role: finalMessage.role,
           content: finalMessage.content,
+          type: finalMessage.type || 'text',
+          label: finalMessage.label || null,
+          route: finalMessage.route || null,
           timestamp: new Date(),
         });
 
+        conversation.messages.push(...newMessages);
         await conversation.save();
 
         socket.emit('stream-end', {
@@ -283,6 +318,7 @@ const setupSocketConnection = (io) => {
         });
 
         tempAssistantMessage = null;
+        scheduleEndMessage(); // ⏱️ 자동 종료 예약
       } catch (err) {
         console.error('❌ stream-end 저장 오류:', err.message);
       }
@@ -290,11 +326,11 @@ const setupSocketConnection = (io) => {
 
     socket.on('disconnect', () => {
       console.log('❌ 클라이언트 연결 종료:', socket.id);
+      if (endTimer) clearTimeout(endTimer);
     });
   });
 };
 
 module.exports = {
   setupSocketConnection,
-  handleUserMessage,
 };

@@ -15,7 +15,14 @@ const messageSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+   type: {
+    type: String,
+    default: 'text', // 'faq', 'redirect', 'text' 등
+  },
+  label: String, // 버튼용 텍스트
+  route: String, // 버튼 클릭 시 이동할 경로
 });
+
 
 // 대화 스키마
 const conversationSchema = new mongoose.Schema(
