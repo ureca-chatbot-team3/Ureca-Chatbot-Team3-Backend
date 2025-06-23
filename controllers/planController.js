@@ -4,39 +4,45 @@ const Validators = require('../utils/validators');
 // 요금제 리스트 조회
 const getPlans = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 20, 
-      search, 
-      category, 
-      minPrice, 
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      category,
+      minPrice,
       maxPrice,
+      quickTag,
+      benefits,
       badge,
+      dataOption,
+      brands,
+      ageRange,
       sortBy = 'price_value',
-      sortOrder = 'asc'
+      sortOrder = 'asc',
     } = req.query;
-    
+
     // 입력값 검증
     const { pageNum, limitNum } = Validators.validatePagination(page, limit);
     const { min, max } = Validators.validatePriceRange(minPrice, maxPrice);
     const validCategory = Validators.validateCategory(category);
-    const { sortBy: validSortBy, sortOrder: validSortOrder } = Validators.validateSortOptions(sortBy, sortOrder);
+    const { sortBy: validSortBy, sortOrder: validSortOrder } =
+      Validators.validateSortOptions(sortBy, sortOrder);
     const sanitizedSearch = Validators.sanitizeSearchQuery(search);
-    
+
     const skip = (pageNum - 1) * limitNum;
 
     // 쿼리 구성
     const query = { isActive: true };
-    
+
     // 검색 조건
     if (sanitizedSearch) {
       query.$or = [
         { name: { $regex: sanitizedSearch, $options: 'i' } },
-        { 'infos': { $elemMatch: { $regex: sanitizedSearch, $options: 'i' } } },
-        { 'benefits.기본혜택': { $regex: sanitizedSearch, $options: 'i' } }
+        { infos: { $elemMatch: { $regex: sanitizedSearch, $options: 'i' } } },
+        { 'benefits.기본혜택': { $regex: sanitizedSearch, $options: 'i' } },
       ];
     }
-    
+
     // 카테고리 필터
     if (validCategory && validCategory !== 'all') {
       query.category = validCategory;
@@ -49,12 +55,82 @@ const getPlans = async (req, res) => {
       if (max !== null) query.price_value.$lte = max;
     }
 
-    // 뱃지 필터
+    query.$and = query.$and || [];
+    if (brands) {
+      const brandsList = brands.split(',');
+      query.$and.push({
+        $or: brandsList.map((b) => ({
+          brands: { $regex: b, $options: 'i' },
+        })),
+      });
+    }
+
+    if (benefits) {
+      const benefitList = benefits.split(',');
+      query.$and.push({
+        $or: benefitList.map((b) => ({
+          [`benefits.${b}`]: { $exists: true },
+        })),
+      });
+    }
+
     if (badge && badge !== 'all') {
-      query.$or = [
-        { badge: badge },
-        { badge: { $elemMatch: { $eq: badge } } }
-      ];
+      query.$and.push({
+        $or: [{ badge: badge }, { badge: { $elemMatch: { $eq: badge } } }],
+      });
+    }
+
+    if (quickTag && quickTag !== '#전체') {
+      const tag = quickTag.replace('#', '');
+      query.$and = query.$and || []; // <= 이거 추가!
+
+      switch (tag) {
+        case '시니어':
+          query.$and.push({ min_age: { $lte: 65 } });
+          break;
+        case '유쓰':
+          query.$and.push({
+            name: { $regex: '유쓰', $options: 'i' },
+          });
+          break;
+        case '청소년':
+          query.$and.push({ name: { $regex: '청소년', $options: 'i' } });
+          break;
+        case '복지':
+          query.$and.push({ name: { $regex: '복지', $options: 'i' } });
+          break;
+        default:
+          break;
+      }
+    }
+
+    if (dataOption) {
+      const options = dataOption.split(',');
+      query.infos = { $elemMatch: { $in: options } };
+    }
+
+    if (ageRange) {
+      const ages = ageRange.split(',');
+      const conditions = [];
+
+      ages.forEach((age) => {
+        if (age === '전체대상') {
+          // 아무 조건도 넣지 않음
+          return;
+        } else if (age === '만 65세 이상') {
+          conditions.push({ min_age: 65 });
+        } else if (age === '만 34세 이하') {
+          conditions.push({ max_age: 34 });
+        } else if (age === '만 18세 이하') {
+          conditions.push({ max_age: 18 });
+        } else if (age === '만 12세 이하') {
+          conditions.push({ max_age: 12 });
+        }
+      });
+
+      if (conditions.length > 0) {
+        query.$or = conditions;
+      }
     }
 
     // 정렬 옵션
@@ -69,7 +145,7 @@ const getPlans = async (req, res) => {
         .limit(limitNum)
         .select('-__v')
         .lean(),
-      Plan.countDocuments(query)
+      Plan.countDocuments(query),
     ]);
 
     const totalPages = Math.ceil(totalCount / limitNum);
@@ -83,23 +159,23 @@ const getPlans = async (req, res) => {
           currentPage: pageNum,
           totalCount,
           hasNext: pageNum < totalPages,
-          hasPrev: pageNum > 1
-        }
-      }
+          hasPrev: pageNum > 1,
+        },
+      },
     });
   } catch (error) {
     console.error('요금제 조회 오류:', error);
-    
+
     if (error.message.includes('검증') || error.message.includes('유효하지')) {
       return res.status(400).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
-    
+
     res.status(500).json({
       success: false,
-      message: '요금제 조회 중 오류가 발생했습니다.'
+      message: '요금제 조회 중 오류가 발생했습니다.',
     });
   }
 };
@@ -108,22 +184,22 @@ const getPlans = async (req, res) => {
 const getPlanDetail = async (req, res) => {
   try {
     const { planId } = req.params;
-    
+
     if (!Validators.isValidObjectId(planId)) {
       return res.status(400).json({
         success: false,
-        message: '유효하지 않은 요금제 ID입니다.'
+        message: '유효하지 않은 요금제 ID입니다.',
       });
     }
-    
+
     const plan = await Plan.findOne({ _id: planId, isActive: true })
       .select('-__v')
       .lean();
-      
+
     if (!plan) {
       return res.status(404).json({
         success: false,
-        message: '요금제를 찾을 수 없습니다.'
+        message: '요금제를 찾을 수 없습니다.',
       });
     }
 
@@ -134,13 +210,15 @@ const getPlanDetail = async (req, res) => {
       category: plan.category,
       price_value: {
         $gte: Math.max(0, plan.price_value - priceRange),
-        $lte: plan.price_value + priceRange
+        $lte: plan.price_value + priceRange,
       },
-      isActive: true
+      isActive: true,
     };
 
     const similarPlans = await Plan.find(similarPlansQuery)
-      .select('name price sale_price price_value sale_price_value category badge imagePath iconPath icon')
+      .select(
+        'name price sale_price price_value sale_price_value category badge imagePath iconPath icon'
+      )
       .limit(3)
       .lean();
 
@@ -148,14 +226,14 @@ const getPlanDetail = async (req, res) => {
       success: true,
       data: {
         plan,
-        similarPlans
-      }
+        similarPlans,
+      },
     });
   } catch (error) {
     console.error('요금제 상세 조회 오류:', error);
     res.status(500).json({
       success: false,
-      message: '요금제 상세 조회 중 오류가 발생했습니다.'
+      message: '요금제 상세 조회 중 오류가 발생했습니다.',
     });
   }
 };
@@ -163,45 +241,56 @@ const getPlanDetail = async (req, res) => {
 // 요금제 추천
 const getRecommendedPlans = async (req, res) => {
   try {
-    const { 
-      dataUsage, 
-      budget,    
-      age,       
-      preferences = [] 
-    } = req.query;
+    const { dataUsage, budget, age, preferences = [] } = req.query;
 
     // 입력값 검증
     const validAge = Validators.validateAge(age);
-    
+
     let validDataUsage = null;
     if (dataUsage) {
       validDataUsage = parseFloat(dataUsage);
-      if (isNaN(validDataUsage) || validDataUsage < 0 || validDataUsage > 1000) {
+      if (
+        isNaN(validDataUsage) ||
+        validDataUsage < 0 ||
+        validDataUsage > 1000
+      ) {
         return res.status(400).json({
           success: false,
-          message: '데이터 사용량은 0GB에서 1000GB 사이여야 합니다.'
+          message: '데이터 사용량은 0GB에서 1000GB 사이여야 합니다.',
         });
       }
     }
-    
+
     let validBudget = null;
     if (budget) {
       validBudget = parseInt(budget);
       if (isNaN(validBudget) || validBudget < 0 || validBudget > 1000000) {
         return res.status(400).json({
           success: false,
-          message: '예산은 0원에서 100만원 사이여야 합니다.'
+          message: '예산은 0원에서 100만원 사이여야 합니다.',
         });
       }
     }
 
     const query = { isActive: true };
-    
+
     // 나이 조건 필터링
     if (validAge) {
       query.$and = [
-        { $or: [{ min_age: { $exists: false } }, { min_age: null }, { min_age: { $lte: validAge } }] },
-        { $or: [{ max_age: { $exists: false } }, { max_age: null }, { max_age: { $gte: validAge } }] }
+        {
+          $or: [
+            { min_age: { $exists: false } },
+            { min_age: null },
+            { min_age: { $lte: validAge } },
+          ],
+        },
+        {
+          $or: [
+            { max_age: { $exists: false } },
+            { max_age: null },
+            { max_age: { $gte: validAge } },
+          ],
+        },
       ];
     }
 
@@ -211,14 +300,16 @@ const getRecommendedPlans = async (req, res) => {
     }
 
     const plans = await Plan.find(query)
-      .select('name price sale_price price_value sale_price_value category infos benefits badge imagePath iconPath icon')
+      .select(
+        'name price sale_price price_value sale_price_value category infos benefits badge imagePath iconPath icon'
+      )
       .sort({ price_value: 1 })
       .lean();
 
     // 추천 점수 계산
-    const scoredPlans = plans.map(plan => {
+    const scoredPlans = plans.map((plan) => {
       let score = 0;
-      
+
       // 데이터 사용량 점수
       if (validDataUsage) {
         const planData = plan.infos.join(' ').toLowerCase();
@@ -261,9 +352,9 @@ const getRecommendedPlans = async (req, res) => {
       if (plan.imagePath) score += 15;
       if (plan.iconPath) score += 10;
 
-      return { 
-        ...plan, 
-        recommendScore: score
+      return {
+        ...plan,
+        recommendScore: score,
       };
     });
 
@@ -276,14 +367,19 @@ const getRecommendedPlans = async (req, res) => {
       success: true,
       data: {
         recommendedPlans,
-        criteria: { dataUsage: validDataUsage, budget: validBudget, age: validAge, preferences }
-      }
+        criteria: {
+          dataUsage: validDataUsage,
+          budget: validBudget,
+          age: validAge,
+          preferences,
+        },
+      },
     });
   } catch (error) {
     console.error('요금제 추천 오류:', error);
     res.status(500).json({
       success: false,
-      message: '요금제 추천 중 오류가 발생했습니다.'
+      message: '요금제 추천 중 오류가 발생했습니다.',
     });
   }
 };
@@ -291,48 +387,49 @@ const getRecommendedPlans = async (req, res) => {
 // 카테고리별 통계
 const getPlanStats = async (req, res) => {
   try {
-    const [categoryStats, badgeStats, priceRanges, totalPlans] = await Promise.all([
-      Plan.aggregate([
-        { $match: { isActive: true } },
-        {
-          $group: {
-            _id: '$category',
-            count: { $sum: 1 },
-            avgPrice: { $avg: '$price_value' },
-            minPrice: { $min: '$price_value' },
-            maxPrice: { $max: '$price_value' }
-          }
-        },
-        { $sort: { _id: 1 } }
-      ]),
-      
-      Plan.aggregate([
-        { $match: { isActive: true, badge: { $ne: null } } },
-        {
-          $group: {
-            _id: '$badge',
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { count: -1 } }
-      ]),
-      
-      Plan.aggregate([
-        { $match: { isActive: true } },
-        {
-          $bucket: {
-            groupBy: '$price_value',
-            boundaries: [0, 30000, 50000, 70000, 100000, 150000],
-            default: '150000+',
-            output: {
-              count: { $sum: 1 }
-            }
-          }
-        }
-      ]),
-      
-      Plan.countDocuments({ isActive: true })
-    ]);
+    const [categoryStats, badgeStats, priceRanges, totalPlans] =
+      await Promise.all([
+        Plan.aggregate([
+          { $match: { isActive: true } },
+          {
+            $group: {
+              _id: '$category',
+              count: { $sum: 1 },
+              avgPrice: { $avg: '$price_value' },
+              minPrice: { $min: '$price_value' },
+              maxPrice: { $max: '$price_value' },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ]),
+
+        Plan.aggregate([
+          { $match: { isActive: true, badge: { $ne: null } } },
+          {
+            $group: {
+              _id: '$badge',
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { count: -1 } },
+        ]),
+
+        Plan.aggregate([
+          { $match: { isActive: true } },
+          {
+            $bucket: {
+              groupBy: '$price_value',
+              boundaries: [0, 30000, 50000, 70000, 100000, 150000],
+              default: '150000+',
+              output: {
+                count: { $sum: 1 },
+              },
+            },
+          },
+        ]),
+
+        Plan.countDocuments({ isActive: true }),
+      ]);
 
     res.json({
       success: true,
@@ -340,14 +437,14 @@ const getPlanStats = async (req, res) => {
         categoryStats,
         badgeStats,
         priceRanges,
-        totalPlans
-      }
+        totalPlans,
+      },
     });
   } catch (error) {
     console.error('통계 조회 오류:', error);
     res.status(500).json({
       success: false,
-      message: '통계 조회 중 오류가 발생했습니다.'
+      message: '통계 조회 중 오류가 발생했습니다.',
     });
   }
 };
@@ -361,30 +458,30 @@ const comparePlans = async (req, res) => {
     if (!planIds || !Array.isArray(planIds)) {
       return res.status(400).json({
         success: false,
-        message: '비교할 요금제 ID 배열이 필요합니다.'
+        message: '비교할 요금제 ID 배열이 필요합니다.',
       });
     }
 
     if (planIds.length < 2 || planIds.length > 5) {
       return res.status(400).json({
         success: false,
-        message: '비교할 요금제는 2개 이상 5개 이하여야 합니다.'
+        message: '비교할 요금제는 2개 이상 5개 이하여야 합니다.',
       });
     }
 
     // 모든 ID 검증
-    const invalidIds = planIds.filter(id => !Validators.isValidObjectId(id));
+    const invalidIds = planIds.filter((id) => !Validators.isValidObjectId(id));
     if (invalidIds.length > 0) {
       return res.status(400).json({
         success: false,
         message: '유효하지 않은 요금제 ID가 포함되어 있습니다.',
-        invalidIds
+        invalidIds,
       });
     }
 
     const plans = await Plan.find({
       _id: { $in: planIds },
-      isActive: true
+      isActive: true,
     }).lean();
 
     if (plans.length !== planIds.length) {
@@ -392,7 +489,7 @@ const comparePlans = async (req, res) => {
         success: false,
         message: '일부 요금제를 찾을 수 없거나 비활성화되었습니다.',
         foundCount: plans.length,
-        requestedCount: planIds.length
+        requestedCount: planIds.length,
       });
     }
 
@@ -400,32 +497,43 @@ const comparePlans = async (req, res) => {
     const comparison = {
       plans: plans,
       analysis: {
-        cheapest: plans.reduce((min, plan) => 
-          plan.price_value < min.price_value ? plan : min),
-        mostExpensive: plans.reduce((max, plan) => 
-          plan.price_value > max.price_value ? plan : max),
+        cheapest: plans.reduce((min, plan) =>
+          plan.price_value < min.price_value ? plan : min
+        ),
+        mostExpensive: plans.reduce((max, plan) =>
+          plan.price_value > max.price_value ? plan : max
+        ),
         mostData: plans.reduce((max, plan) => {
-          const maxData = plan.infos.join(' ').toLowerCase().includes('무제한') ? Infinity : 
-            parseInt(plan.infos.join(' ').match(/(\d+)gb/)?.[1] || 0);
-          const currentMax = max.infos.join(' ').toLowerCase().includes('무제한') ? Infinity :
-            parseInt(max.infos.join(' ').match(/(\d+)gb/)?.[1] || 0);
+          const maxData = plan.infos.join(' ').toLowerCase().includes('무제한')
+            ? Infinity
+            : parseInt(plan.infos.join(' ').match(/(\d+)gb/)?.[1] || 0);
+          const currentMax = max.infos
+            .join(' ')
+            .toLowerCase()
+            .includes('무제한')
+            ? Infinity
+            : parseInt(max.infos.join(' ').match(/(\d+)gb/)?.[1] || 0);
           return maxData > currentMax ? plan : max;
         }),
-        averagePrice: Math.round(plans.reduce((sum, plan) => sum + plan.price_value, 0) / plans.length),
-        categories: [...new Set(plans.map(plan => plan.category))],
-        hasUnlimited: plans.some(plan => plan.infos.join(' ').toLowerCase().includes('무제한'))
-      }
+        averagePrice: Math.round(
+          plans.reduce((sum, plan) => sum + plan.price_value, 0) / plans.length
+        ),
+        categories: [...new Set(plans.map((plan) => plan.category))],
+        hasUnlimited: plans.some((plan) =>
+          plan.infos.join(' ').toLowerCase().includes('무제한')
+        ),
+      },
     };
 
     res.json({
       success: true,
-      data: comparison
+      data: comparison,
     });
   } catch (error) {
     console.error('요금제 비교 오류:', error);
     res.status(500).json({
       success: false,
-      message: '요금제 비교 중 오류가 발생했습니다.'
+      message: '요금제 비교 중 오류가 발생했습니다.',
     });
   }
 };
@@ -435,5 +543,5 @@ module.exports = {
   getPlanDetail,
   getRecommendedPlans,
   getPlanStats,
-  comparePlans
+  comparePlans,
 };
