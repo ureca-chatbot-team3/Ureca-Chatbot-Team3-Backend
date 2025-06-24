@@ -4,14 +4,13 @@ const { getClientIP, generateSessionId } = require('../utils/helpers');
 const { fetchPlansForChatbotSummary } = require('../utils/chatbotPlanHelper');
 const Faq = require('../models/Faq');
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 let cachedPlanSummary = null;
 let lastCacheTime = 0;
 const CACHE_DURATION_MS = 15 * 60 * 1000;
-const CONVERSATION_TIMEOUT = 15 * 60 * 1000;
+
+const userConversationEndFlags = new Map(); // ⭐ 대화 강제 종료 플래그 관리
 
 const generateSystemPrompt = async () => {
   const now = Date.now();
@@ -89,70 +88,61 @@ const setupSocketConnection = (io) => {
     const safeUserId = rawUserId && rawUserId !== 'undefined' && rawUserId !== 'null' ? rawUserId : null;
     socket.userId = safeUserId;
 
-    let endTimer = null;
-
-   const scheduleEndMessage = async () => {
-  if (endTimer) clearTimeout(endTimer);
-
-  console.log('⏳ [예약됨] scheduleEndMessage 호출됨');
-  endTimer = setTimeout(async () => {
-    console.log('⏱️ [자동종료 타이머 실행 시작]');
-
-    const userId = socket.userId && socket.userId !== 'undefined' && socket.userId !== 'null' ? socket.userId : null;
-    const query = userId ? { userId } : { sessionId };
-    let conversation = await Conversation.findOne(query).sort({ updatedAt: -1 });
-
-    if (!conversation) {
-      console.log('⚠️ 대화 없음. 종료 메시지 생략됨');
-      return;
-    }
-
-    const endMessage = {
-      role: 'system',
-      content: '💬 이 대화는 종료되었습니다.',
-      type: 'notice',
-      timestamp: new Date(),
-    };
-
-    conversation.messages.push(endMessage);
-    await conversation.save();
-
-    console.log(`⏱️ [자동종료] ${userId || sessionId} 대화 종료 메시지 전송됨`);
-
-    socket.emit('stream-end', {
-      message: { ...endMessage, id: conversation.messages.at(-1)._id },
-    });
-  }, CONVERSATION_TIMEOUT);
-};
-
-
     socket.on('authenticate', ({ userId }) => {
       socket.userId = userId;
       console.log('🔐 사용자 인증됨:', userId);
     });
 
+    socket.on('force-end-session', async () => {
+      const userId = socket.userId;
+      const id = userId || sessionId;
+      const query = userId ? { userId } : { sessionId };
+
+      const conversation = await Conversation.findOne(query).sort({ updatedAt: -1 });
+      if (conversation) {
+        const endMessage = {
+          role: 'system',
+          content: '💬 이 대화는 수동 종료되었습니다.',
+          type: 'notice',
+          timestamp: new Date(),
+        };
+        conversation.messages.push(endMessage);
+        await conversation.save();
+        console.log(`✅ [수동 종료 메시지 저장됨] ${id}`);
+      }
+
+      userConversationEndFlags.set(id, true); // ⭐ 새 대화 시작 플래그 설정
+    });
+
     socket.on('user-message', async (message) => {
-      if (endTimer) clearTimeout(endTimer); // 타이머 초기화
       try {
         message = message.trim();
         console.log('💬 수신된 메시지:', message);
 
         const matchedFAQ = await findMatchingFAQ(message);
-        const userId = socket.userId && socket.userId !== 'undefined' && socket.userId !== 'null' ? socket.userId : null;
+        const userId = socket.userId;
+        const id = userId || sessionId;
         const query = userId ? { userId } : { sessionId };
-        let conversation = await Conversation.findOne(query).sort({ updatedAt: -1 });
 
-        const now = Date.now();
-        const lastUpdated = conversation?.updatedAt?.getTime() || 0;
-        const isExpired = now - lastUpdated > CONVERSATION_TIMEOUT;
-
-        if (!conversation || isExpired) {
+        let conversation;
+        if (userConversationEndFlags.get(id)) {
           conversation = new Conversation({
             userId,
             sessionId,
             messages: [],
             metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
           });
+          userConversationEndFlags.delete(id);
+        } else {
+          conversation = await Conversation.findOne(query).sort({ updatedAt: -1 });
+          if (!conversation) {
+            conversation = new Conversation({
+              userId,
+              sessionId,
+              messages: [],
+              metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
+            });
+          }
         }
 
         const userMessage = {
@@ -177,19 +167,16 @@ const setupSocketConnection = (io) => {
           socket.emit('user-message-confirmed', { ...userMessage, id: faqMessageId + '-user' });
           socket.emit('stream-start', { messageId: faqMessageId, timestamp: new Date().toISOString() });
           socket.emit('stream-end', { message: { id: faqMessageId, role: 'assistant', content: matchedFAQ.answer, type: 'faq', timestamp: new Date() } });
-          scheduleEndMessage();
           return;
         }
 
         conversation.messages.push(userMessage);
         await conversation.save();
 
-        
-
         const systemPrompt = await generateSystemPrompt();
         const messages = [
           { role: 'system', content: systemPrompt },
-          ...conversation.messages.map((msg) => ({ role: msg.role, content: msg.content }))
+          ...conversation.messages.map((msg) => ({ role: msg.role, content: msg.content })),
         ];
 
         const tempMessageId = 'temp-' + Date.now();
@@ -225,8 +212,6 @@ const setupSocketConnection = (io) => {
         socket.emit('stream-end', {
           message: { ...assistantMessage, id: conversation.messages.at(-1)._id },
         });
-
-        scheduleEndMessage(); // ⏱️ 자동 종료 예약
       } catch (error) {
         console.error('❌ 메시지 처리 오류:', error.message);
         socket.emit('error', {
@@ -269,21 +254,29 @@ const setupSocketConnection = (io) => {
         const finalMessage = message || tempAssistantMessage;
         if (!finalMessage?.content) return;
 
-        const userId = socket.userId && socket.userId !== 'undefined' && socket.userId !== 'null' ? socket.userId : null;
+        const userId = socket.userId;
+        const id = userId || sessionId;
         const query = userId ? { userId } : { sessionId };
-        let conversation = await Conversation.findOne(query).sort({ updatedAt: -1 });
 
-        const now = Date.now();
-        const lastUpdated = conversation?.updatedAt?.getTime() || 0;
-        const isExpired = now - lastUpdated > CONVERSATION_TIMEOUT;
-
-        if (!conversation || isExpired) {
+        let conversation;
+        if (userConversationEndFlags.get(id)) {
           conversation = new Conversation({
             userId,
             sessionId,
             messages: [],
             metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
           });
+          userConversationEndFlags.delete(id);
+        } else {
+          conversation = await Conversation.findOne(query).sort({ updatedAt: -1 });
+          if (!conversation) {
+            conversation = new Conversation({
+              userId,
+              sessionId,
+              messages: [],
+              metadata: { ipAddress: clientIP, userAgent, createdAt: new Date() },
+            });
+          }
         }
 
         const newMessages = [];
@@ -318,7 +311,6 @@ const setupSocketConnection = (io) => {
         });
 
         tempAssistantMessage = null;
-        scheduleEndMessage(); // ⏱️ 자동 종료 예약
       } catch (err) {
         console.error('❌ stream-end 저장 오류:', err.message);
       }
@@ -326,11 +318,8 @@ const setupSocketConnection = (io) => {
 
     socket.on('disconnect', () => {
       console.log('❌ 클라이언트 연결 종료:', socket.id);
-      if (endTimer) clearTimeout(endTimer);
     });
   });
 };
 
-module.exports = {
-  setupSocketConnection,
-};
+module.exports = { setupSocketConnection };

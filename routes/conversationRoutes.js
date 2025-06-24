@@ -38,7 +38,7 @@ router.get('/', async (req, res) => {
 router.get('/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const convo = await Conversation.findOne({ sessionId });
+    const convo = await Conversation.findOne({ sessionId }).sort({ updatedAt: -1 });
 
     if (!convo) {
       return res.status(404).json({ message: '대화 기록 없음', messages: [] });
