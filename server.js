@@ -162,5 +162,17 @@ server.listen(PORT, () => {
   );
 });
 
+// ✅ 오래된 대화 자동 종료 스케줄러
+const expireOldConversations = require("./utils/autoCloseExpiredConversations");
+
+setInterval(async () => {
+  try {
+    await expireOldConversations();
+  } catch (err) {
+    console.error("❌ 자동 종료 처리 실패:", err.message);
+  }
+}, 10 * 1000); // 매 1분마다 실행
+
+
 // ✅ 소켓 및 앱 내보내기 (테스트 등 용도)
 module.exports = { app, io };
