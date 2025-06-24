@@ -1,7 +1,7 @@
 // utils/autoCloseExpiredConversations.js
 const Conversation = require('../models/Conversation');
 
-const CONVERSATION_TIMEOUT =  60 * 1000; // 15분(테스트 용으로 1분)
+const CONVERSATION_TIMEOUT =  60 * 1000; // 15분(테스트 용으로1분)
 
 async function expireOldConversations() {
   const expiredTime = new Date(Date.now() - CONVERSATION_TIMEOUT);
@@ -23,6 +23,7 @@ async function expireOldConversations() {
       timestamp: new Date(),
     });
 
+    convo.markModified('messages');
     await convo.save();
     console.log('✅ 종료 메시지 추가됨:', convo._id);
   }
