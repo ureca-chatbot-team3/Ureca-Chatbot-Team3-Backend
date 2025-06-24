@@ -86,7 +86,7 @@ const getPlans = async (req, res) => {
 
     if (quickTag && quickTag !== '#전체') {
       const tag = quickTag.replace('#', '');
-      query.$and = query.$and || []; // <= 이거 추가!
+      query.$and = query.$and || [];
 
       switch (tag) {
         case '시니어':
@@ -98,7 +98,12 @@ const getPlans = async (req, res) => {
           });
           break;
         case '청소년':
-          query.$and.push({ name: { $regex: '청소년', $options: 'i' } });
+          query.$and.push({
+            $or: [
+              { name: { $regex: '청소년', $options: 'i' } },
+              { name: { $regex: '키즈', $options: 'i' } },
+            ],
+          });
           break;
         case '복지':
           query.$and.push({ name: { $regex: '복지', $options: 'i' } });
@@ -119,14 +124,15 @@ const getPlans = async (req, res) => {
 
       ages.forEach((age) => {
         if (age === '전체대상') {
-          // 아무 조건도 넣지 않음
           return;
         } else if (age === '만 65세 이상') {
           conditions.push({ min_age: 65 });
         } else if (age === '만 34세 이하') {
           conditions.push({ max_age: 34 });
         } else if (age === '만 18세 이하') {
+          // 여기! 18 이하 누르면 12 이하도 포함
           conditions.push({ max_age: 18 });
+          conditions.push({ max_age: 12 });
         } else if (age === '만 12세 이하') {
           conditions.push({ max_age: 12 });
         }
