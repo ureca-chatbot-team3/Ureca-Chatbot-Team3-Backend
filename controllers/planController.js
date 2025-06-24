@@ -24,7 +24,8 @@ const getPlans = async (req, res) => {
     // 입력값 검증
     const { pageNum, limitNum } = Validators.validatePagination(page, limit);
     const { min, max } = Validators.validatePriceRange(minPrice, maxPrice);
-    const validCategory = Validators.validateCategory(category);
+    const validCategory = Validators.validateCategory(category) || 'all';
+
     const { sortBy: validSortBy, sortOrder: validSortOrder } =
       Validators.validateSortOptions(sortBy, sortOrder);
     const sanitizedSearch = Validators.sanitizeSearchQuery(search);
@@ -44,6 +45,7 @@ const getPlans = async (req, res) => {
     }
 
     // 카테고리 필터
+
     if (validCategory && validCategory !== 'all') {
       query.category = validCategory;
     }
@@ -55,24 +57,26 @@ const getPlans = async (req, res) => {
       if (max !== null) query.price_value.$lte = max;
     }
 
-    query.$and = query.$and || [];
-    if (brands) {
-      const brandsList = brands.split(',');
+    // brandsList 만들기
+    let brandsList = [];
+
+    if (Array.isArray(req.query['brands[]'])) {
+      brandsList = req.query['brands[]'];
+    } else if (Array.isArray(req.query.brands)) {
+      brandsList = req.query.brands;
+    } else if (typeof req.query.brands === 'string') {
+      brandsList = req.query.brands.split(',');
+    }
+
+    if (brandsList.length > 0) {
+      query.$and = query.$and || [];
       query.$and.push({
-        $or: brandsList.map((b) => ({
-          brands: { $regex: b, $options: 'i' },
-        })),
+        brands: { $in: brandsList },
       });
     }
 
-    if (benefits) {
-      const benefitList = benefits.split(',');
-      query.$and.push({
-        $or: benefitList.map((b) => ({
-          [`benefits.${b}`]: { $exists: true },
-        })),
-      });
-    }
+    console.log('brandsList:', brandsList);
+    console.log('최종 쿼리:', JSON.stringify(query, null, 2));
 
     if (badge && badge !== 'all') {
       query.$and.push({
@@ -538,10 +542,6 @@ const comparePlans = async (req, res) => {
   }
 };
 
-
-
-
-
 module.exports = {
   getPlans,
   getPlanDetail,
@@ -549,5 +549,3 @@ module.exports = {
   getPlanStats,
   comparePlans,
 };
-
-
