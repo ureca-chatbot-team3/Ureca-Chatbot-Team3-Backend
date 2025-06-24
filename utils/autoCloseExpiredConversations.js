@@ -1,7 +1,7 @@
 // utils/autoCloseExpiredConversations.js
 const Conversation = require('../models/Conversation');
 
-const CONVERSATION_TIMEOUT =  10 * 1000; // 15분
+const CONVERSATION_TIMEOUT =  60 * 1000; // 15분(테스트 용으로 1분)
 
 async function expireOldConversations() {
   const expiredTime = new Date(Date.now() - CONVERSATION_TIMEOUT);
