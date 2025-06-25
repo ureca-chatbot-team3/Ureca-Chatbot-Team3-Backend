@@ -365,7 +365,7 @@ const getRecommendedPlans = async (req, res) => {
     // 점수순 정렬
     const recommendedPlans = scoredPlans
       .sort((a, b) => b.recommendScore - a.recommendScore)
-      .slice(0, 5);
+      .slice(0, 4);
 
     res.json({
       success: true,
