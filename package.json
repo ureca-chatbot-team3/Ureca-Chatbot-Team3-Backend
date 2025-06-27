@@ -20,6 +20,7 @@
     "setup": "npm run clear && npm run seed && npm run seed:questions",
     "clean": "npm run clear && npm run seed && npm run seed:questions",
     "update:images": "node scripts/updatePlansWithImages.js",
+    "update:png": "node scripts/updateImagePathsToPng.js",
     "test": "jest",
     "build": "echo 'Build completed - No build step required for this Node.js project'"
   },

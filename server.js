@@ -38,8 +38,33 @@ setupSocketConnection(io);
 // ✅ 포트 설정
 const PORT = process.env.PORT || 5000;
 
-// ✅ 정적 파일 제공
-app.use("/images", express.static(path.join(__dirname, "public/images")));
+// ✅ 정적 파일 제공 (PNG 이미지 최적화)
+app.use("/images", (req, res, next) => {
+  // 이미지 캐싱 헤더 설정
+  res.setHeader('Cache-Control', 'public, max-age=86400'); // 1일 캐싱
+  res.setHeader('Vary', 'Accept-Encoding');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  
+  // PNG 파일에 대한 최적화
+  if (req.path.endsWith('.png')) {
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=604800'); // 7일 캐싱 (PNG는 더 오래)
+  }
+  
+  // SVG 파일 (캠릭터 아이콘용)
+  if (req.path.endsWith('.svg')) {
+    res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=604800'); // 7일 캐싱
+  }
+  
+  // 기타 이미지 파일 타입별 최적화
+  if (req.path.match(/\.(jpg|jpeg|gif|webp)$/i)) {
+    res.setHeader('Cache-Control', 'public, max-age=604800'); // 7일 캐싱
+  }
+  
+  next();
+}, express.static(path.join(__dirname, "public/images")));
+
 app.use(express.static(path.join(__dirname, "public")));
 
 // ✅ 보안 미들웨어
