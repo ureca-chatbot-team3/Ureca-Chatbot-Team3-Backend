@@ -9,7 +9,11 @@ const getCookieOptions = () => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  domain: process.env.NODE_ENV === 'production' ? undefined : undefined
+  path: '/',
+  // 개발 환경에서는 domain 설정하지 않음
+  ...(process.env.NODE_ENV === 'production' && {
+    domain: process.env.COOKIE_DOMAIN
+  })
 });
 
 // 일반 로그인
@@ -30,7 +34,7 @@ const login = async (req, res) => {
     
     res.cookie('token', token, {
       ...getCookieOptions(),
-      maxAge: 1000 * 60 * 60, // 1시간
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7일
     });
 
     const userData = {
@@ -139,7 +143,7 @@ const kakaoCallback = async (req, res) => {
     
     res.cookie('token', token, {
       ...getCookieOptions(),
-      maxAge: 1000 * 60 * 60, // 1시간
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7일
     });
 
     res.redirect(`${process.env.FRONTEND_URL}/`);

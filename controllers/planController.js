@@ -50,11 +50,24 @@ const getPlans = async (req, res) => {
       query.category = validCategory;
     }
 
-    // 가격 범위 필터
+    // 가격 범위 필터 (여러 범위 선택 시 OR 조건으로 처리)
+    const priceRanges = [];
     if (min !== null || max !== null) {
-      query.price_value = {};
-      if (min !== null) query.price_value.$gte = min;
-      if (max !== null) query.price_value.$lte = max;
+      if (min !== null && max !== null) {
+        // 둘 다 있으면 범위 조건
+        priceRanges.push({ price_value: { $gte: min, $lte: max } });
+      } else if (min !== null) {
+        // 최소값만 있으면
+        priceRanges.push({ price_value: { $gte: min } });
+      } else if (max !== null) {
+        // 최대값만 있으면
+        priceRanges.push({ price_value: { $lte: max } });
+      }
+      
+      if (priceRanges.length > 0) {
+        query.$and = query.$and || [];
+        query.$and.push({ $or: priceRanges });
+      }
     }
 
     // brandsList 만들기
@@ -65,7 +78,7 @@ const getPlans = async (req, res) => {
     } else if (Array.isArray(req.query.brands)) {
       brandsList = req.query.brands;
     } else if (typeof req.query.brands === 'string') {
-      brandsList = req.query.brands.split(',');
+      brandsList = req.query.brands.split(',').map(brand => brand.trim()).filter(brand => brand);
     }
 
     if (brandsList.length > 0) {
@@ -114,32 +127,75 @@ const getPlans = async (req, res) => {
     }
 
     if (dataOption) {
-      const options = dataOption.split(',');
-      query.infos = { $elemMatch: { $in: options } };
+      const options = dataOption.split(',').map(opt => opt.trim()).filter(opt => opt);
+      if (options.length > 0) {
+        query.$and = query.$and || [];
+        const dataConditions = [];
+        
+        options.forEach(option => {
+          if (option === '완전 무제한') {
+            dataConditions.push({ infos: { $elemMatch: { $regex: '무제한', $options: 'i' } } });
+          } else if (option === '다쓰면 속도제한') {
+            dataConditions.push({ infos: { $elemMatch: { $regex: '속도제한', $options: 'i' } } });
+          } else if (option === '상관 없어요') {
+            // 상관없어요는 모든 데이터 옵션 포함
+            return;
+          } else {
+            dataConditions.push({ infos: { $elemMatch: { $regex: option, $options: 'i' } } });
+          }
+        });
+        
+        if (dataConditions.length > 0) {
+          query.$and.push({ $or: dataConditions });
+        }
+      }
     }
 
     if (ageRange) {
-      const ages = ageRange.split(',');
+      const ages = ageRange.split(',').map(age => age.trim()).filter(age => age);
       const conditions = [];
 
       ages.forEach((age) => {
         if (age === '전체대상') {
-          return;
+          return; // 전체대상은 조건 추가 안함
         } else if (age === '만 65세 이상') {
-          conditions.push({ min_age: 65 });
+          conditions.push({
+            $or: [
+              { min_age: { $lte: 65 } },
+              { min_age: { $exists: false } },
+              { min_age: null }
+            ]
+          });
         } else if (age === '만 34세 이하') {
-          conditions.push({ max_age: 34 });
+          conditions.push({
+            $or: [
+              { max_age: { $gte: 34 } },
+              { max_age: { $exists: false } },
+              { max_age: null }
+            ]
+          });
         } else if (age === '만 18세 이하') {
-          // 여기! 18 이하 누르면 12 이하도 포함
-          conditions.push({ max_age: 18 });
-          conditions.push({ max_age: 12 });
+          conditions.push({
+            $or: [
+              { max_age: { $gte: 18 } },
+              { max_age: { $exists: false } },
+              { max_age: null }
+            ]
+          });
         } else if (age === '만 12세 이하') {
-          conditions.push({ max_age: 12 });
+          conditions.push({
+            $or: [
+              { max_age: { $gte: 12 } },
+              { max_age: { $exists: false } },
+              { max_age: null }
+            ]
+          });
         }
       });
 
       if (conditions.length > 0) {
-        query.$or = conditions;
+        query.$and = query.$and || [];
+        query.$and.push({ $or: conditions });
       }
     }
 
